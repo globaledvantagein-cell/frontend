@@ -67,7 +67,7 @@ export default function Home() {
             <Link to="/jobs"><Button variant="ghost" size="lg">Browse Jobs</Button></Link>
           </div>
           <div className="anim-up" style={{ animationDelay: '0.28s', display: 'flex', justifyContent: 'center', gap: 48, marginTop: 60, flexWrap: 'wrap', paddingTop: 40, borderTop: '1.25px solid var(--border)' }}>
-            {[['20+', 'Companies'], ['Daily', 'Fresh scrapes'], ['Free', 'Forever']].map(([v, l]) => (
+            {[['20+', 'Companies'], ['Daily', 'Fresh scrapes']].map(([v, l]) => (
               <div key={l} style={{ textAlign: 'center' }}>
                 <div className="font-sketch" style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary)' }}>{v}</div>
                 <div style={{ fontSize: '0.78rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--subtle-ink)', marginTop: 4 }}>{l}</div>
