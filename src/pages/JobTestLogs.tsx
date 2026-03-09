@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { Container, Button, Input, Badge, Card, EmptyState, Alert } from '../components/ui';
 
 interface Evidence {
-  location_reason: string;
   german_reason: string;
 }
 
@@ -15,10 +14,10 @@ interface JobLog {
   Company: string;
   GermanRequired: boolean;
   ConfidenceScore: number;
-  LocationClassification: string;
   Status: string;
   FinalDecision: string;
   scrapedAt: string;
+  PostedDate: string | null;
   Description: string;
   Evidence?: Evidence;
 }
@@ -222,6 +221,12 @@ export default function JobTestLogs() {
                       </h3>
                       <p style={{ fontSize: 'clamp(0.75rem, 2vw, 0.82rem)', color: 'var(--text-muted)', wordBreak: 'break-word' }}>
                         {log.Company} · JobID: <code style={{ background: 'var(--bg-surface-2)', padding: '2px 6px', borderRadius: 4, fontFamily: "'JetBrains Mono',monospace", fontSize: '0.7rem' }}>{log.JobID}</code>
+                        {' · '}
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          {(log.PostedDate || log.scrapedAt)
+                            ? `Posted: ${new Date((log.PostedDate || log.scrapedAt)!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                            : 'Posted: N/A'}
+                        </span>
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -254,12 +259,6 @@ export default function JobTestLogs() {
                       </span>
                     </div>
                   </div>
-                  <div>
-                    <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 4 }}>
-                      Location
-                    </p>
-                    <span style={{ fontSize: 'clamp(0.8rem, 2vw, 0.88rem)', color: 'var(--text-primary)' }}>{log.LocationClassification}</span>
-                  </div>
                 </div>
 
                 {/* Evidence - Responsive */}
@@ -269,24 +268,19 @@ export default function JobTestLogs() {
                       AI Evidence & Reasoning
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {[
-                        ['📍 Location', log.Evidence.location_reason],
-                        ['🇩🇪 German', log.Evidence.german_reason]
-                      ].map(([label, reason]) => (
-                        <div key={label as string} style={{ 
-                          padding: 'clamp(8px, 2vw, 10px) clamp(10px, 2.5vw, 14px)', 
-                          background: 'var(--bg-surface-2)', 
-                          borderLeft: '3px solid var(--acid)', 
-                          borderRadius: '0 8px 8px 0' 
-                        }}>
-                          <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {label}
-                          </p>
-                          <p style={{ fontSize: 'clamp(0.75rem, 2vw, 0.82rem)', color: 'var(--text-secondary)', lineHeight: 1.6, fontStyle: 'italic', wordBreak: 'break-word' }}>
-                            {reason || 'No evidence provided'}
-                          </p>
-                        </div>
-                      ))}
+                      <div style={{ 
+                        padding: 'clamp(8px, 2vw, 10px) clamp(10px, 2.5vw, 14px)', 
+                        background: 'var(--bg-surface-2)', 
+                        borderLeft: '3px solid var(--acid)', 
+                        borderRadius: '0 8px 8px 0' 
+                      }}>
+                        <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          🇩🇪 German
+                        </p>
+                        <p style={{ fontSize: 'clamp(0.75rem, 2vw, 0.82rem)', color: 'var(--text-secondary)', lineHeight: 1.6, fontStyle: 'italic', wordBreak: 'break-word' }}>
+                          {log.Evidence.german_reason || 'No evidence provided'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}

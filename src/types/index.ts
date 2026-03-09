@@ -14,6 +14,7 @@ export interface IJob {
   sourceSite?: string;
   Status?: 'pending_review' | 'active' | 'rejected';
   ConfidenceScore: number;
+  scrapedAt?: string;
 }
 
 export interface ICompany {

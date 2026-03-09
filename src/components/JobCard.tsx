@@ -36,7 +36,8 @@ export default function JobCard({ job, isReviewMode, isRejectedView, onDecision,
     }
   };
 
-  const rt = relTime(job.PostedDate);
+  const effectiveDate = job.PostedDate || job.scrapedAt || null;
+  const rt = relTime(effectiveDate);
   const hasLongDesc = job.Description && job.Description.length > 300;
 
   return (
@@ -170,6 +171,20 @@ export default function JobCard({ job, isReviewMode, isRejectedView, onDecision,
                       {rt}
                     </Badge>
                   )}
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      fontSize: '0.8rem',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    <Clock size={12} />
+                    {effectiveDate
+                      ? `Posted: ${new Date(effectiveDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                      : 'Posted: N/A'}
+                  </span>
                 </div>
               </div>
               {isReviewMode && (
