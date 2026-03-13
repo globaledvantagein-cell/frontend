@@ -38,11 +38,25 @@ export default function Footer() {
             </p>
           </div>
           {col('Navigate', [['/', 'Job Feed'], ['/directory', 'Companies']])}
-          {col('Legal', [['/legal', 'Legal Info'], ['/legal', 'Privacy'], ['/legal', 'Contact']])}
+          <div>
+            <p className="font-sketch" style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--primary)', marginBottom: 14 }}>Legal</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[['/legal', 'Legal Info'], ['/legal', 'Privacy'], ['/legal', 'Contact: globaledvantagein@gmail.com']].map(([to, label]) => (
+                <Link key={to + label} to={to} style={{ fontSize: '0.875rem', color: 'var(--muted-ink)', textDecoration: 'none', transition: 'color 0.22s' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted-ink)')}>
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
         <Divider style={{ marginBottom: 20 }} />
         <p style={{ fontSize: '0.78rem', color: 'var(--subtle-ink)', textAlign: 'center', lineHeight: 1.6, maxWidth: 560, margin: '0 auto 8px' }}>
           Disclaimer: This is a non-commercial aggregator. Language requirements are AI-determined — verify directly with employers.
+        </p>
+        <p style={{ fontSize: '0.78rem', color: 'var(--subtle-ink)', textAlign: 'center', lineHeight: 1.6, margin: '0 auto 8px' }}>
+          Contact: <a href="mailto:globaledvantagein@gmail.com" style={{ color: 'inherit' }}>globaledvantagein@gmail.com</a>
         </p>
         <p style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--subtle-ink)', opacity: 0.5 }}>
           © {year} {BRAND.fullName}

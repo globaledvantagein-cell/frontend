@@ -25,11 +25,12 @@ export const LEGAL = {
     },
     {
       title: '6. Privacy & Data',
-      body: 'When you submit your email address, it is stored for the purpose of sending job-related email notifications. We do not sell or share your email with third parties. You may request deletion of your data at any time by contacting us via the legal page.',
+      body: 'When you submit your email address, it is stored for the purpose of sending job-related email notifications. We do not sell or share your email with third parties. You may request deletion of your data at any time by contacting us at globaledvantagein@gmail.com.',
     },
   ],
   contact: {
     title: 'Contact',
-    text: 'For questions, data deletion requests, or legal enquiries, please use the contact details available on the legal page or reach out via the footer links.',
+    text: 'For questions, data deletion requests, or legal enquiries, please email globaledvantagein@gmail.com.',
+    email: 'globaledvantagein@gmail.com',
   },
 } as const;
