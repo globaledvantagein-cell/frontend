@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FileText, RefreshCw, Search, CheckCircle, AlertCircle, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Button, Input, Badge, Card, EmptyState, Alert } from '../components/ui';
+import { CONTENT } from '../theme/content';
 
 interface Evidence {
   german_reason: string;
@@ -40,7 +41,7 @@ export default function JobTestLogs() {
       const token = localStorage.getItem('token');
       
       if (!token) {
-        setError('No authentication token found. Please log in.');
+        setError(CONTENT.admin.jobTestLogs.states.noToken);
         setLoading(false);
         return;
       }
@@ -52,7 +53,7 @@ export default function JobTestLogs() {
       if (res.status === 401 || res.status === 400) {
         const data = await res.json();
         if (data.error === 'Invalid Token' || data.error?.includes('Token')) {
-          setError('Your session has expired. Please log in again.');
+          setError(CONTENT.admin.jobTestLogs.states.expired);
           // Clear invalid token
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -70,7 +71,7 @@ export default function JobTestLogs() {
       setLogs(Array.isArray(data) ? data : []);
     } catch (e) { 
       console.error('Error fetching logs:', e);
-      setError('Failed to load test logs. Please try again.');
+      setError(CONTENT.admin.jobTestLogs.states.failedLoad);
     }
     finally { setLoading(false); }
   };
@@ -89,7 +90,7 @@ export default function JobTestLogs() {
 
   const StatusBadge = ({ decision }: { decision: string }) => {
     return <Badge variant={decision === 'accepted' ? 'green' : 'red'}>
-      {decision === 'accepted' ? '✓ Accepted' : '✗ Rejected'}
+      {decision === 'accepted' ? CONTENT.admin.jobTestLogs.labels.accepted : CONTENT.admin.jobTestLogs.labels.rejected}
     </Badge>;
   };
 
@@ -102,19 +103,19 @@ export default function JobTestLogs() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <div>
                 <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>
-                  Admin Diagnostics
+                  {CONTENT.admin.jobTestLogs.subtitle}
                 </p>
                 <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontFamily: "'Playfair Display',serif", color: 'var(--text-primary)', margin: 0 }}>
                   <FileText size={24} color="var(--acid)" />
-                  AI Test Logs
+                  {CONTENT.admin.jobTestLogs.title}
                 </h1>
               </div>
               <Button variant="ghost" size="sm" onClick={fetchLogs} loading={loading}>
-                <RefreshCw size={13} />Refresh
+                <RefreshCw size={13} />{CONTENT.admin.jobTestLogs.refreshCta}
               </Button>
             </div>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              {filtered.length} jobs analyzed (accepted + rejected with AI evidence)
+              {CONTENT.admin.jobTestLogs.summary(filtered.length)}
             </p>
           </div>
         </Container>
@@ -129,7 +130,7 @@ export default function JobTestLogs() {
                 <span>{error}</span>
                 {error.includes('log in') && (
                   <Button size="sm" variant="danger" onClick={() => navigate('/login')}>
-                    <LogOut size={12} />Login
+                    <LogOut size={12} />{CONTENT.admin.jobTestLogs.states.loginCta}
                   </Button>
                 )}
               </div>
@@ -144,7 +145,7 @@ export default function JobTestLogs() {
             <div style={{ position: 'relative', width: '100%' }}>
               <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <Input
-                placeholder="Search by title, company, JobID..."
+                placeholder={CONTENT.admin.jobTestLogs.searchPlaceholder}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={{ paddingLeft: 36, width: '100%' }}
@@ -153,7 +154,7 @@ export default function JobTestLogs() {
             
             {/* Filter Buttons - Horizontal scroll on mobile */}
             <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-              {(['all', 'accepted', 'rejected'] as const).map(decision => (
+              {CONTENT.admin.jobTestLogs.decisions.map(decision => (
                 <button
                   key={decision}
                   onClick={() => setFilterDecision(decision)}
@@ -188,19 +189,19 @@ export default function JobTestLogs() {
         ) : error ? (
           <EmptyState 
             icon={<AlertCircle size={32} />} 
-            title="Unable to load logs" 
-            body="Please check your authentication and try again."
+            title={CONTENT.admin.jobTestLogs.states.unableTitle} 
+            body={CONTENT.admin.jobTestLogs.states.unableBody}
             action={
               <Button onClick={() => navigate('/login')}>
-                <LogOut size={13} />Go to Login
+                <LogOut size={13} />{CONTENT.admin.jobTestLogs.states.goToLoginCta}
               </Button>
             }
           />
         ) : filtered.length === 0 ? (
           <EmptyState 
             icon={<FileText size={32} />} 
-            title="No logs found" 
-            body={logs.length === 0 ? "No test logs in database yet. Run the scraper first." : "Try adjusting your filters."} 
+            title={CONTENT.admin.jobTestLogs.states.noLogsTitle} 
+            body={logs.length === 0 ? CONTENT.admin.jobTestLogs.states.noLogsBody : CONTENT.admin.jobTestLogs.states.adjustFiltersBody} 
           />
         ) : (
           <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -220,12 +221,12 @@ export default function JobTestLogs() {
                         {log.JobTitle}
                       </h3>
                       <p style={{ fontSize: 'clamp(0.75rem, 2vw, 0.82rem)', color: 'var(--text-muted)', wordBreak: 'break-word' }}>
-                        {log.Company} · JobID: <code style={{ background: 'var(--bg-surface-2)', padding: '2px 6px', borderRadius: 4, fontFamily: "'JetBrains Mono',monospace", fontSize: '0.7rem' }}>{log.JobID}</code>
+                        {log.Company} · {CONTENT.admin.jobTestLogs.labels.jobId} <code style={{ background: 'var(--bg-surface-2)', padding: '2px 6px', borderRadius: 4, fontFamily: "'JetBrains Mono',monospace", fontSize: '0.7rem' }}>{log.JobID}</code>
                         {' · '}
                         <span style={{ color: 'var(--text-muted)' }}>
                           {(log.PostedDate || log.scrapedAt)
-                            ? `Posted: ${new Date((log.PostedDate || log.scrapedAt)!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                            : 'Posted: N/A'}
+                            ? `${CONTENT.admin.jobTestLogs.labels.postedPrefix} ${new Date((log.PostedDate || log.scrapedAt)!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                            : `${CONTENT.admin.jobTestLogs.labels.postedPrefix} ${CONTENT.admin.jobTestLogs.labels.postedFallback}`}
                         </span>
                       </p>
                     </div>
@@ -250,12 +251,12 @@ export default function JobTestLogs() {
                 }}>
                   <div>
                     <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 4 }}>
-                      German Required
+                      {CONTENT.admin.jobTestLogs.labels.germanRequired}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {log.GermanRequired ? <AlertCircle size={16} color="var(--danger)" /> : <CheckCircle size={16} color="var(--success)" />}
                       <span style={{ fontSize: 'clamp(0.8rem, 2vw, 0.88rem)', fontWeight: 600, color: log.GermanRequired ? 'var(--danger)' : 'var(--success)' }}>
-                        {log.GermanRequired ? 'Yes' : 'No'}
+                        {log.GermanRequired ? CONTENT.admin.jobTestLogs.labels.yes : CONTENT.admin.jobTestLogs.labels.no}
                       </span>
                     </div>
                   </div>
@@ -265,7 +266,7 @@ export default function JobTestLogs() {
                 {log.Evidence && (
                   <div style={{ marginBottom: 14 }}>
                     <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 10 }}>
-                      AI Evidence & Reasoning
+                      {CONTENT.admin.jobTestLogs.labels.aiEvidence}
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <div style={{ 
@@ -275,10 +276,10 @@ export default function JobTestLogs() {
                         borderRadius: '0 8px 8px 0' 
                       }}>
                         <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          🇩🇪 German
+                          {CONTENT.admin.jobTestLogs.labels.germanEvidence}
                         </p>
                         <p style={{ fontSize: 'clamp(0.75rem, 2vw, 0.82rem)', color: 'var(--text-secondary)', lineHeight: 1.6, fontStyle: 'italic', wordBreak: 'break-word' }}>
-                          {log.Evidence.german_reason || 'No evidence provided'}
+                          {log.Evidence.german_reason || CONTENT.admin.jobTestLogs.labels.noEvidence}
                         </p>
                       </div>
                     </div>
@@ -336,9 +337,9 @@ export default function JobTestLogs() {
                         onMouseLeave={e => ((e.currentTarget.style.opacity = '1'))}
                       >
                         {expandedDesc[log._id] ? (
-                          <>Show less <ChevronUp size={14} /></>
+                          <>{CONTENT.admin.jobTestLogs.labels.showLess} <ChevronUp size={14} /></>
                         ) : (
-                          <>View full description <ChevronDown size={14} /></>
+                          <>{CONTENT.admin.jobTestLogs.labels.viewFullDescription} <ChevronDown size={14} /></>
                         )}
                       </button>
                     )}

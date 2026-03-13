@@ -7,12 +7,13 @@ import CompanyCard from '../components/DirectoryCard';
 import type { IJob, ICompany } from '../types';
 import { Button, Badge, Container, Alert } from '../components/ui';
 import { BRAND } from '../theme/brand';
+import { CONTENT } from '../theme/content';
 
-const TICKER = ['Software Engineer', 'Product Manager', 'Data Scientist', 'UX Designer', 'DevOps Engineer', 'Marketing Manager', 'Finance Analyst', 'Team Lead', 'Backend Developer', 'Cloud Architect', 'Scrum Master', 'Machine Learning Engineer', 'Frontend Developer', 'Operations Manager', 'Business Analyst', 'Head of Growth'];
+const TICKER = CONTENT.home.ticker;
 const WHY = [
-  { icon: <Briefcase size={18} />, title: 'AI-Filtered', body: 'Every listing is scanned to confirm German is not required — not guessed, confirmed.' },
-  { icon: <Search size={18} />, title: 'Daily Scrapes', body: 'We scrape 20+ top German employers daily so you always see fresh roles first.' },
-  { icon: <Shield size={18} />, title: 'Human Reviewed', body: 'A review layer catches AI mistakes. Only quality, relevant roles reach you.' },
+  { icon: <Briefcase size={18} />, title: CONTENT.home.why[0].title, body: CONTENT.home.why[0].body },
+  { icon: <Search size={18} />, title: CONTENT.home.why[1].title, body: CONTENT.home.why[1].body },
+  { icon: <Shield size={18} />, title: CONTENT.home.why[2].title, body: CONTENT.home.why[2].body },
 ];
 
 export default function Home() {
@@ -57,17 +58,17 @@ export default function Home() {
         <Container style={{ position: 'relative', zIndex: 1, paddingTop: 96, paddingBottom: 80, textAlign: 'center' }}>
           <div className="anim-up" style={{ marginBottom: 20 }}><Badge variant="primary"><Briefcase size={10} />{BRAND.tagline}</Badge></div>
           <h1 className="anim-up" style={{ animationDelay: '0.07s', fontSize: 'clamp(2.4rem,6.5vw,4.5rem)', fontWeight: 700, color: 'var(--ink)', lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: 24 }}>
-            English-Speaking<br /><span className="font-sketch" style={{ color: 'var(--primary)', fontSize: '1.1em' }}>Jobs in Germany</span>
+            {CONTENT.home.hero.heading}<br /><span className="font-sketch" style={{ color: 'var(--primary)', fontSize: '1.1em' }}>{CONTENT.home.hero.headingAccent}</span>
           </h1>
           <p className="anim-up" style={{ animationDelay: '0.14s', fontSize: '1.05rem', color: 'var(--muted-ink)', lineHeight: 1.75, maxWidth: 500, margin: '0 auto 36px' }}>
-            We scrape, filter, and review roles from 20+ major German companies — surfacing only the ones where German is genuinely not required.
+            {CONTENT.home.hero.subtitle}
           </p>
           <div className="anim-up" style={{ animationDelay: '0.2s', display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <Link to="/signup"><Button size="lg">Get Weekly Alerts <ArrowRight size={15} /></Button></Link>
-            <Link to="/jobs"><Button variant="ghost" size="lg">Browse Jobs</Button></Link>
+            <Link to="/signup"><Button size="lg">{CONTENT.home.hero.primaryCta} <ArrowRight size={15} /></Button></Link>
+            <Link to="/jobs"><Button variant="ghost" size="lg">{CONTENT.home.hero.secondaryCta}</Button></Link>
           </div>
           <div className="anim-up" style={{ animationDelay: '0.28s', display: 'flex', justifyContent: 'center', gap: 48, marginTop: 60, flexWrap: 'wrap', paddingTop: 40, borderTop: '1.25px solid var(--border)' }}>
-            {[['20+', 'Companies'], ['Daily', 'Fresh scrapes']].map(([v, l]) => (
+            {CONTENT.home.hero.stats.map(([v, l]) => (
               <div key={l} style={{ textAlign: 'center' }}>
                 <div className="font-sketch" style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary)' }}>{v}</div>
                 <div style={{ fontSize: '0.78rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--subtle-ink)', marginTop: 4 }}>{l}</div>
@@ -109,24 +110,24 @@ export default function Home() {
         <Container>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 36, flexWrap: 'wrap', gap: 14 }}>
             <div>
-              <p className="font-sketch" style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--primary)', marginBottom: 8 }}>Hiring partners</p>
-              <h2 style={{ fontSize: 'clamp(1.5rem,3vw,2.2rem)', fontWeight: 700, color: 'var(--ink)' }}>Companies hiring <span style={{ color: 'var(--primary)' }}>English speakers</span></h2>
+              <p className="font-sketch" style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--primary)', marginBottom: 8 }}>{CONTENT.home.companies.label}</p>
+              <h2 style={{ fontSize: 'clamp(1.5rem,3vw,2.2rem)', fontWeight: 700, color: 'var(--ink)' }}>{CONTENT.home.companies.heading} <span style={{ color: 'var(--primary)' }}>{CONTENT.home.companies.headingAccent}</span></h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {/* Carousel arrows (visible on all viewports) */}
-              <button onClick={() => scrollCarousel('left')} aria-label="Scroll left"
+              <button onClick={() => scrollCarousel('left')} aria-label={CONTENT.home.companies.carouselAriaLeft}
                 style={{ background: 'var(--surface-solid)', border: '1.25px solid var(--border)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--ink)', transition: 'all 0.22s' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--primary)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--primary)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--ink)'; }}>
                 <ChevronLeft size={16} />
               </button>
-              <button onClick={() => scrollCarousel('right')} aria-label="Scroll right"
+              <button onClick={() => scrollCarousel('right')} aria-label={CONTENT.home.companies.carouselAriaRight}
                 style={{ background: 'var(--surface-solid)', border: '1.25px solid var(--border)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--ink)', transition: 'all 0.22s' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--primary)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--primary)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--ink)'; }}>
                 <ChevronRight size={16} />
               </button>
-              <Link to="/directory"><Button variant="ghost">Full directory <ArrowRight size={13} /></Button></Link>
+              <Link to="/directory"><Button variant="ghost">{CONTENT.home.companies.fullDirectoryCta} <ArrowRight size={13} /></Button></Link>
             </div>
           </div>
 
@@ -146,17 +147,17 @@ export default function Home() {
         <div className="orb" style={{ width: 400, height: 400, top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: 'var(--primary-soft)' }} />
         <Container size="sm" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
           <div style={{ width: 52, height: 52, background: 'var(--primary-soft)', border: '1.25px solid var(--primary)', borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', margin: '0 auto 24px' }}><Mail size={22} /></div>
-          <h2 style={{ fontSize: 'clamp(1.7rem,4vw,3rem)', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em', marginBottom: 14 }}>Never miss a job drop.</h2>
-          <p style={{ color: 'var(--muted-ink)', marginBottom: 36, lineHeight: 1.75 }}>Join 2,000+ professionals. Weekly digest of verified English-only jobs. No spam.</p>
+          <h2 style={{ fontSize: 'clamp(1.7rem,4vw,3rem)', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em', marginBottom: 14 }}>{CONTENT.home.newsletter.heading}</h2>
+          <p style={{ color: 'var(--muted-ink)', marginBottom: 36, lineHeight: 1.75 }}>{CONTENT.home.newsletter.subtitle}</p>
           <form onSubmit={subscribe} style={{ display: 'flex', gap: 8, maxWidth: 420, margin: '0 auto 16px', flexWrap: 'wrap' }}>
-            <input type="email" required placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} disabled={sub === 'busy'}
+            <input type="email" required placeholder={CONTENT.home.newsletter.emailPlaceholder} value={email} onChange={e => setEmail(e.target.value)} disabled={sub === 'busy'}
               style={{ flex: 1, minWidth: 200, padding: '12px 14px', fontFamily: 'inherit', fontSize: '0.925rem', background: 'var(--surface-solid)', color: 'var(--ink)', border: '1.25px solid var(--border)', borderRadius: 10, outline: 'none' }}
               onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = 'var(--focus-ring)' }}
               onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }} />
-            <Button loading={sub === 'busy'}>Subscribe</Button>
+            <Button loading={sub === 'busy'}>{CONTENT.home.newsletter.subscribeCta}</Button>
           </form>
-          {sub === 'ok' && <Alert type="success">You're in — check your inbox soon.</Alert>}
-          {sub === 'err' && <Alert type="error">Something went wrong. Please try again.</Alert>}
+          {sub === 'ok' && <Alert type="success">{CONTENT.home.newsletter.success}</Alert>}
+          {sub === 'err' && <Alert type="error">{CONTENT.home.newsletter.error}</Alert>}
         </Container>
       </section>
 
@@ -165,14 +166,14 @@ export default function Home() {
         <Container size="lg">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
             <div>
-              <p className="font-sketch" style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--primary)', marginBottom: 8 }}>Fresh picks</p>
-              <h2 style={{ fontSize: 'clamp(1.5rem,3vw,2.2rem)', fontWeight: 700, color: 'var(--ink)' }}>Latest opportunities</h2>
+              <p className="font-sketch" style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--primary)', marginBottom: 8 }}>{CONTENT.home.latest.label}</p>
+              <h2 style={{ fontSize: 'clamp(1.5rem,3vw,2.2rem)', fontWeight: 700, color: 'var(--ink)' }}>{CONTENT.home.latest.heading}</h2>
             </div>
-            <Link to="/jobs"><Button variant="ghost">View all <ArrowRight size={13} /></Button></Link>
+            <Link to="/jobs"><Button variant="ghost">{CONTENT.home.latest.viewAllCta} <ArrowRight size={13} /></Button></Link>
           </div>
           {loading ? <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 140 }} />)}</div>
             : <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{jobs.map(j => <JobCard key={j._id} job={j} />)}</div>}
-          <div style={{ textAlign: 'center', marginTop: 36 }}><Link to="/jobs"><Button variant="outline">Load more <ArrowRight size={13} /></Button></Link></div>
+          <div style={{ textAlign: 'center', marginTop: 36 }}><Link to="/jobs"><Button variant="outline">{CONTENT.home.latest.loadMoreCta} <ArrowRight size={13} /></Button></Link></div>
         </Container>
       </section>
     </div>
