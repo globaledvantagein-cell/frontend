@@ -4,6 +4,17 @@
 export const lightVars: Record<string, string> = {
   // Paper surfaces
   '--paper': '#FAF7F1',
+    // ── Semantic aliases (used by components via var(--bg-*), var(--text-*), var(--acid)) ──
+    '--bg-base':        '#FAF7F1',
+    '--bg-surface':     '#FFFFFF',
+    '--bg-surface-2':   '#F4EFE5',
+    '--text-primary':   '#141414',
+    '--text-secondary': '#525252',
+    '--acid':           '#059669',
+    '--acid-soft':      'rgba(5,150,105,0.12)',
+    '--acid-dim':       'rgba(5,150,105,0.07)',
+    '--acid-mid':       'rgba(5,150,105,0.22)',
+    '--danger-dim':     'rgba(220,38,38,0.08)',
   '--paper2': '#F4EFE5',
   '--ink': '#141414',
   '--ink2': '#2B2B2B',
@@ -67,6 +78,17 @@ export const lightVars: Record<string, string> = {
 
 export const darkVars: Record<string, string> = {
   '--paper': '#0E0F12',
+    // ── Semantic aliases ──────────────────────────────────────────────────────────
+    '--bg-base':        '#0E0F12',
+    '--bg-surface':     '#12141A',
+    '--bg-surface-2':   'rgba(18,20,26,0.92)',
+    '--text-primary':   '#F5F5F5',
+    '--text-secondary': '#BDBDBD',
+    '--acid':           '#34D399',
+    '--acid-soft':      'rgba(52,211,153,0.14)',
+    '--acid-dim':       'rgba(52,211,153,0.06)',
+    '--acid-mid':       'rgba(52,211,153,0.22)',
+    '--danger-dim':     'rgba(248,113,113,0.08)',
   '--paper2': '#12141A',
   '--ink': '#F5F5F5',
   '--ink2': '#E9E9E9',

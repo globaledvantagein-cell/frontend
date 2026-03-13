@@ -63,11 +63,11 @@ export default function Home() {
           <p className="anim-up" style={{ animationDelay: '0.14s', fontSize: '1.05rem', color: 'var(--muted-ink)', lineHeight: 1.75, maxWidth: 500, margin: '0 auto 36px' }}>
             {CONTENT.home.hero.subtitle}
           </p>
-          <div className="anim-up" style={{ animationDelay: '0.2s', display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div className="anim-up hero-cta-group" style={{ animationDelay: '0.2s', display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Link to="/signup"><Button size="lg">{CONTENT.home.hero.primaryCta} <ArrowRight size={15} /></Button></Link>
             <Link to="/jobs"><Button variant="ghost" size="lg">{CONTENT.home.hero.secondaryCta}</Button></Link>
           </div>
-          <div className="anim-up" style={{ animationDelay: '0.28s', display: 'flex', justifyContent: 'center', gap: 48, marginTop: 60, flexWrap: 'wrap', paddingTop: 40, borderTop: '1.25px solid var(--border)' }}>
+          <div className="anim-up hero-stats-grid" style={{ animationDelay: '0.28s', display: 'flex', justifyContent: 'center', gap: 48, marginTop: 60, flexWrap: 'wrap', paddingTop: 40, borderTop: '1.25px solid var(--border)' }}>
             {CONTENT.home.hero.stats.map(([v, l]) => (
               <div key={l} style={{ textAlign: 'center' }}>
                 <div className="font-sketch" style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary)' }}>{v}</div>
@@ -91,7 +91,7 @@ export default function Home() {
       {/* ── WHY SECTION ──────────────────────────────── */}
       <section style={{ padding: '80px 0', background: 'var(--paper)' }}>
         <Container>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', border: '1.25px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+          <div className="why-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', border: '1.25px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
             {WHY.map((w, i) => (
               <div key={i} style={{ padding: '36px 30px', background: 'var(--surface-solid)', borderRight: i < WHY.length - 1 ? '1.25px solid var(--border)' : 'none', transition: 'background 0.22s' }}
                 onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = 'var(--paper2)'}
@@ -149,7 +149,7 @@ export default function Home() {
           <div style={{ width: 52, height: 52, background: 'var(--primary-soft)', border: '1.25px solid var(--primary)', borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', margin: '0 auto 24px' }}><Mail size={22} /></div>
           <h2 style={{ fontSize: 'clamp(1.7rem,4vw,3rem)', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em', marginBottom: 14 }}>{CONTENT.home.newsletter.heading}</h2>
           <p style={{ color: 'var(--muted-ink)', marginBottom: 36, lineHeight: 1.75 }}>{CONTENT.home.newsletter.subtitle}</p>
-          <form onSubmit={subscribe} style={{ display: 'flex', gap: 8, maxWidth: 420, margin: '0 auto 16px', flexWrap: 'wrap' }}>
+          <form onSubmit={subscribe} className="newsletter-form" style={{ display: 'flex', gap: 8, maxWidth: 420, margin: '0 auto 16px', flexWrap: 'wrap' }}>
             <input type="email" required placeholder={CONTENT.home.newsletter.emailPlaceholder} value={email} onChange={e => setEmail(e.target.value)} disabled={sub === 'busy'}
               style={{ flex: 1, minWidth: 200, padding: '12px 14px', fontFamily: 'inherit', fontSize: '0.925rem', background: 'var(--surface-solid)', color: 'var(--ink)', border: '1.25px solid var(--border)', borderRadius: 10, outline: 'none' }}
               onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = 'var(--focus-ring)' }}

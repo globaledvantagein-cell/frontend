@@ -61,7 +61,7 @@ export default function Signup() {
       </div>
 
       {/* Form panel */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
+      <div className="signup-form-panel" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
         <div className="anim-up" style={{ width: '100%', maxWidth: 440 }}>
           {/* Mobile brand header */}
           <div className="md:hidden" style={{ textAlign: 'center', marginBottom: 28 }}>

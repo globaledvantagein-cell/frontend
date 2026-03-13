@@ -23,7 +23,7 @@ export default function RejectedJobs() {
   const handleRestore = async (id: string) => {
     setJobs(p => p.filter(j => j._id !== id));
     const token = localStorage.getItem('token');
-    await fetch(`/api/jobs/${id}/feedback`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ status: null }) });
+    await fetch(`/api/jobs/admin/restore/${id}`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` } });
   };
 
   return (

@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap');
 
 /* ── Reset ────────────────────────────────────────── */
 *,
@@ -15,6 +14,12 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
 /* ── Base ─────────────────────────────────────────── */
 body {
   font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -25,6 +30,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   transition: background 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+body.jobs-split-locked {
+  overflow: hidden;
+}
+
+body.jobs-split-locked #root {
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -366,6 +380,8 @@ body::before {
 
 .job-card:hover {
   border-color: var(--primary) !important;
+  transform: translateX(3px);
+  box-shadow: var(--shadow-md);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -651,5 +667,430 @@ body::before {
 
   .nav-tab::after {
     transition: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE SYSTEM
+   Breakpoints:
+   xs:  < 380px   (small mobile)
+   sm:  380–640px (mobile)
+   md:  640–768px (large mobile / small tablet)
+   lg:  768–1024px (tablet)
+   xl:  1024–1280px (small laptop)
+   2xl: 1280–1440px (laptop)
+   3xl: 1440–1920px (desktop)
+   4xl: > 1920px  (large desktop / TV)
+   ═══════════════════════════════════════════════════ */
+
+/* ── Safe-area spacing helpers ─────────────────────── */
+.safe-top    { padding-top:    env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-left   { padding-left:   env(safe-area-inset-left); }
+.safe-right  { padding-right:  env(safe-area-inset-right); }
+
+/* ── Mobile nav drawer ─────────────────────────────── */
+.nav-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 59;
+  animation: fadeIn 0.18s ease both;
+}
+
+.nav-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(320px, 88vw);
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100%); }
+}
+
+.nav-drawer.closing {
+  animation: slideOutRight 0.18s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/* ── Bottom sheet ──────────────────────────────────── */
+.bottom-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 200;
+  animation: fadeIn 0.18s ease both;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: slideInUp 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes slideInUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes slideOutDown {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+
+.bottom-sheet.closing {
+  animation: slideOutDown 0.2s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.bottom-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+
+.bottom-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.bottom-sheet-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  padding: 12px 16px;
+}
+
+.bottom-sheet-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ── Sticky bottom bar (mobile detail apply/actions) ── */
+.sticky-bottom-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+/* ── Mobile detail slide-in overlay ──────────────────── */
+.mobile-detail-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg-base, #FAF7F1);
+    overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideInFromRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  padding-top: env(safe-area-inset-top);
+}
+
+@keyframes slideInFromRight {
+  from { transform: translateX(100%); opacity: 0.6; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.mobile-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+  min-height: 52px;
+}
+
+.mobile-detail-body {
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    padding: 12px 12px 32px;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Touch targets ──────────────────────────────────── */
+@media (max-width: 767px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  button,
+  [role="button"],
+  a,
+  select,
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px;
+  }
+
+  /* Override for small decorative buttons (pagination dots, etc.) */
+  .no-touch-expand {
+    min-height: unset !important;
+    min-width: unset !important;
+  }
+}
+
+/* ── Hover effects: only real pointer devices ─────────── */
+@media (hover: none) {
+  .job-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    border-color: var(--border) !important;
+  }
+
+  .job-card::before {
+    display: none;
+  }
+
+  .marker-hover::before {
+    display: none;
+  }
+}
+
+/* ── Split view responsive grid ──────────────────────── */
+.split-grid {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .split-grid {
+    display: grid;
+    grid-template-columns: 40% 60%;
+    gap: 14px;
+    flex: 1;
+    min-height: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .split-grid {
+    grid-template-columns: 35% 65%;
+  }
+}
+
+@media (min-width: 1440px) {
+  .split-grid {
+    grid-template-columns: 30% 70%;
+    max-width: 1600px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .split-grid {
+    grid-template-columns: 28% 72%;
+    max-width: 1800px;
+  }
+}
+
+.mobile-list-only {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .mobile-list-only {
+    display: none !important;
+  }
+}
+
+/* ── Container max widths ────────────────────────────── */
+@media (min-width: 1440px) {
+  .container-responsive {
+    max-width: 1600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+@media (min-width: 1920px) {
+  .container-responsive {
+    max-width: 1800px;
+  }
+
+  .container-responsive .right-panel-text {
+    max-width: 800px;
+  }
+}
+
+/* ── Filter bar responsive ───────────────────────────── */
+.filter-bar-full {
+  display: none;
+}
+
+.filter-bar-tablet {
+  display: none;
+}
+
+.filter-bar-mobile {
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .filter-bar-mobile {
+    display: none;
+  }
+
+  .filter-bar-tablet {
+    display: flex;
+  }
+}
+
+@media (min-width: 1024px) {
+  .filter-bar-tablet {
+    display: none;
+  }
+
+  .filter-bar-full {
+    display: flex;
+  }
+}
+
+/* ── Typography clamp scales ─────────────────────────── */
+.type-page-title    { font-size: clamp(1.4rem, 3vw, 2.2rem); }
+.type-section-title { font-size: clamp(1.1rem, 2.5vw, 1.5rem); }
+.type-job-title-detail { font-size: clamp(1.2rem, 2.5vw, 1.6rem); }
+.type-job-title-card   { font-size: clamp(0.82rem, 1.8vw, 0.95rem); }
+.type-body          { font-size: clamp(0.8rem, 1.5vw, 0.9rem); }
+.type-badge         { font-size: clamp(0.6rem, 1.2vw, 0.72rem); }
+.type-filter        { font-size: clamp(0.7rem, 1.3vw, 0.8rem); }
+.type-muted         { font-size: clamp(0.7rem, 1.3vw, 0.82rem); }
+
+/* ── Large desktop text comfort ─────────────────────── */
+@media (min-width: 1920px) {
+  body {
+    font-size: 1.05rem;
+  }
+
+  .split-grid .right-panel-content {
+    max-width: 800px;
+  }
+}
+
+/* ── Home page responsive ────────────────────────────── */
+@media (max-width: 767px) {
+  .hero-cta-group {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-cta-group a,
+  .hero-cta-group button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .hero-stats-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 16px;
+    justify-items: center;
+  }
+
+  .why-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .newsletter-form {
+    flex-direction: column;
+  }
+
+  .newsletter-form input,
+  .newsletter-form button {
+    width: 100%;
+  }
+}
+
+/* ── Signup page ─────────────────────────────────────── */
+@media (max-width: 767px) {
+  .signup-form-panel {
+    padding: 28px 18px !important;
+  }
+}
+
+/* ── Card badge text ─────────────────────────────────── */
+.badge-text {
+  font-size: clamp(0.6rem, 1.2vw, 0.72rem);
+}
+
+/* ── Collapsible section ────────────────────────────── */
+.collapsible-body {
+  overflow: hidden;
+  transition: max-height 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+
+.collapsible-body.collapsed {
+  max-height: 0 !important;
+  opacity: 0;
+}
+
+.collapsible-body.expanded {
+  opacity: 1;
+}
+
+/* ── Active press feedback ──────────────────────────── */
+@media (hover: none) {
+  button:active,
+  [role="button"]:active {
+    opacity: 0.75;
+    transform: scale(0.97);
   }
 }

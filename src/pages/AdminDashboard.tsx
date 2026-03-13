@@ -5,11 +5,14 @@ import { Server, Database, Cpu, ClipboardList, CheckCircle, RefreshCw, ArrowRigh
 import { Container, PageHeader, Button, StatCard } from '../components/ui';
 
 interface DailyStats { connectedSources: number; jobsScraped: number; jobsSentToAI: number; jobsPendingReview: number; jobsPublished: number; }
+interface CleanSummary { total: number; cleaned: number; alreadyClean: number; }
 
 export default function AdminDashboard() {
   const { token } = useAuth();
   const [stats, setStats] = useState<DailyStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanSummary, setCleanSummary] = useState<CleanSummary | null>(null);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -20,6 +23,33 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => { fetchStats(); }, [token]);
+
+  const cleanDescriptions = async () => {
+    if (!window.confirm('This will strip any remaining HTML from all job descriptions. Continue?')) {
+      return;
+    }
+
+    setCleaning(true);
+    setCleanSummary(null);
+
+    try {
+      const response = await fetch('/api/jobs/admin/clean-descriptions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to clean descriptions');
+      }
+
+      setCleanSummary(payload);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setCleaning(false);
+    }
+  };
 
   const STATS = [
     { icon: <Server size={18} />, value: stats?.connectedSources ?? 0, label: 'Career Pages', accent: false },
@@ -38,12 +68,18 @@ export default function AdminDashboard() {
             actions={
               <div style={{ display: 'flex', gap: 10 }}>
                 <Button variant="ghost" size="sm" onClick={fetchStats} loading={loading}><RefreshCw size={13} />Refresh</Button>
+                <Button variant="ghost" size="sm" onClick={cleanDescriptions} loading={cleaning}>Clean All Descriptions</Button>
                 <Link to="/review"><Button size="sm">Review Queue <ArrowRight size={13} /></Button></Link>
               </div>
             } />
         </Container>
       </div>
       <Container style={{ padding: '32px 24px' }}>
+        {cleanSummary && (
+          <div style={{ marginBottom: 14, padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface-solid)', color: 'var(--muted-ink)', fontSize: '0.86rem' }}>
+            Description cleaning complete · Total: {cleanSummary.total} · Cleaned: {cleanSummary.cleaned} · Already clean: {cleanSummary.alreadyClean}
+          </div>
+        )}
         {loading
           ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 14 }}>{[1, 2, 3, 4, 5].map(i => <div key={i} className="skeleton" style={{ height: 140 }} />)}</div>
           : <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 14 }}>

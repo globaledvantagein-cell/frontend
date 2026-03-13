@@ -27,6 +27,8 @@ export default function JobTestLogs() {
   const [logs, setLogs] = useState<JobLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [reanalyzingById, setReanalyzingById] = useState<Record<string, boolean>>({});
+  const [reanalyzeMessageById, setReanalyzeMessageById] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
   const [filterDecision, setFilterDecision] = useState<'all' | 'accepted' | 'rejected'>('all');
   const [expandedDesc, setExpandedDesc] = useState<Record<string, boolean>>({});
@@ -86,6 +88,57 @@ export default function JobTestLogs() {
 
   const toggleDesc = (id: string) => {
     setExpandedDesc(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const reanalyzeSingle = async (log: JobLog) => {
+    setReanalyzingById(prev => ({ ...prev, [log._id]: true }));
+    setReanalyzeMessageById(prev => ({ ...prev, [log._id]: '' }));
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setReanalyzeMessageById(prev => ({ ...prev, [log._id]: 'Missing auth token. Please log in again.' }));
+        return;
+      }
+
+      const identifier = encodeURIComponent(log.JobID || log._id);
+      const response = await fetch(`/api/jobs/admin/reanalyze/${identifier}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to re-analyze this job');
+      }
+
+      if (payload?.skipped) {
+        setReanalyzeMessageById(prev => ({ ...prev, [log._id]: payload.reason || 'Skipped due to manual review.' }));
+        return;
+      }
+
+      const updatedJob = payload?.job;
+      if (updatedJob) {
+        setLogs(previous => previous.map(item => {
+          if (item._id !== log._id) return item;
+          return {
+            ...item,
+            GermanRequired: Boolean(updatedJob.GermanRequired),
+            ConfidenceScore: typeof updatedJob.ConfidenceScore === 'number'
+              ? updatedJob.ConfidenceScore
+              : item.ConfidenceScore,
+            Status: updatedJob.Status || item.Status,
+          };
+        }));
+      }
+
+      setReanalyzeMessageById(prev => ({ ...prev, [log._id]: 'Re-analysis complete.' }));
+    } catch (e) {
+      console.error(e);
+      setReanalyzeMessageById(prev => ({ ...prev, [log._id]: 'Failed to re-analyze this job.' }));
+    } finally {
+      setReanalyzingById(prev => ({ ...prev, [log._id]: false }));
+    }
   };
 
   const StatusBadge = ({ decision }: { decision: string }) => {
@@ -231,6 +284,9 @@ export default function JobTestLogs() {
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Button size="sm" variant="ghost" onClick={() => reanalyzeSingle(log)} loading={Boolean(reanalyzingById[log._id])}>
+                        Re-analyze
+                      </Button>
                       <StatusBadge decision={log.FinalDecision} />
                       <Badge variant={log.ConfidenceScore >= 0.9 ? 'green' : log.ConfidenceScore >= 0.7 ? 'neutral' : 'red'}>
                         {Math.round(log.ConfidenceScore * 100)}%
@@ -238,6 +294,12 @@ export default function JobTestLogs() {
                     </div>
                   </div>
                 </div>
+
+                {reanalyzeMessageById[log._id] && (
+                  <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                    {reanalyzeMessageById[log._id]}
+                  </p>
+                )}
 
                 {/* Classification Grid - Responsive */}
                 <div style={{ 

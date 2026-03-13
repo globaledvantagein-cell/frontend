@@ -5,15 +5,35 @@ export interface IJob {
   Company: string;
   Location: string;
   ApplicationURL: string;
+  DirectApplyURL: string | null;
   PostedDate: string | null;
-  Description: string; // The backend scrapes this now
+  Description: string;
   GermanRequired?: boolean;
-  thumbStatus?: 'up' | 'down' | null;
-  Department?: string;
+  Department: string;
+  WorkplaceType: string;
+  Domain: string;
+  SubDomain: string;
+  ExperienceLevel: string;
+  SalaryCurrency: string | null;
+  SalaryMin: number | null;
+  SalaryMax: number | null;
+  SalaryInterval: string | null;
+  ATSPlatform: string;
+  AllLocations: string[];
+  EmploymentType: string | null;
+  Country: string | null;
+  Team: string | null;
+  Office: string | null;
+  IsRemote: boolean;
+  Tags: string[];
+  isEntryLevel: boolean;
   ContractType?: string;
   sourceSite?: string;
   Status?: 'pending_review' | 'active' | 'rejected';
   ConfidenceScore: number;
+  thumbsUp: number;
+  thumbsDown: number;
+  userVote?: 'up' | 'down' | null;
   scrapedAt?: string;
 }
 
