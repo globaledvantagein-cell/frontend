@@ -10,14 +10,6 @@ const AVATAR_COLORS = [
     '#6C7FD1', '#D15F8A',
 ];
 
-function getAvatarColor(name: string): string {
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
-import { ExternalLink } from 'lucide-react';
-
 interface Company {
     companyName: string;
     source: 'scraped' | 'manual';
@@ -26,6 +18,14 @@ interface Company {
     careersUrl?: string;
     domain?: string;
 }
+
+function getAvatarColor(name: string) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+import { ExternalLink } from 'lucide-react';
 
 function CompanyCard({ company }: { company: Company }) {
     const navigate = useNavigate();
@@ -137,8 +137,8 @@ export default function CompanyDirectory() {
     // Sort: scraped (openRoles desc), then manual (alpha)
     const sortedCompanies = useMemo(() => {
         if (!companies) return [];
-        const scraped = companies.filter((c: Company) => c.source === 'scraped').sort((a: Company, b: Company) => b.openRoles - a.openRoles);
-        const manual = companies.filter((c: Company) => c.source === 'manual').sort((a: Company, b: Company) => a.companyName.localeCompare(b.companyName));
+        const scraped = companies.filter(c => c.source === 'scraped').sort((a, b) => b.openRoles - a.openRoles);
+        const manual = companies.filter(c => c.source === 'manual').sort((a, b) => a.companyName.localeCompare(b.companyName));
         return [...scraped, ...manual];
     }, [companies]);
 
@@ -146,7 +146,7 @@ export default function CompanyDirectory() {
     const filteredCompanies = useMemo(() => {
         if (!search.trim()) return sortedCompanies;
         const q = search.trim().toLowerCase();
-        return sortedCompanies.filter((c: Company) => (c.companyName || '').toLowerCase().includes(q));
+        return sortedCompanies.filter(c => (c.companyName || '').toLowerCase().includes(q));
     }, [sortedCompanies, search]);
 
     // Stats
@@ -156,6 +156,7 @@ export default function CompanyDirectory() {
     // Show more logic
     const visibleCompanies = search.trim() ? filteredCompanies : filteredCompanies.slice(0, showCount);
     const moreRemaining = search.trim() ? 0 : Math.max(0, filteredCompanies.length - showCount);
+
 
     // Responsive grid columns
     const isMobile = useMediaQuery('(max-width: 767px)');

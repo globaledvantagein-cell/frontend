@@ -26,6 +26,7 @@ export default function Home() {
     })();
   }, []);
 
+
   const previewJobs = jobs.slice(0, 6);
 
   return (
@@ -108,6 +109,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+
 
       {/* ── LATEST JOBS ──────────────────────────────── */}
       <section style={{ padding: '80px 0', background: 'var(--surface-solid)', borderTop: '1.25px solid var(--border)' }}>
