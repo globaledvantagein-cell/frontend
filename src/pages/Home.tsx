@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Mail, Briefcase, Shield, Search } from 'lucide-react';
+import { ArrowRight, Briefcase, Shield, Search } from 'lucide-react';
 import HomeJobCard from '../components/HomeJobCard';
 import CompanyCard from '../components/DirectoryCard';
 import type { IJob, ICompany } from '../types';
-import { Button, Container, Alert } from '../components/ui';
+import { Button, Container } from '../components/ui';
 import { BRAND } from '../theme/brand';
 import { CONTENT } from '../theme/content';
 
@@ -47,8 +47,6 @@ export default function Home() {
   const [jobs, setJobs] = useState<IJob[]>([]);
   const [companies, setCompanies] = useState<ICompany[]>([]);
   const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState('');
-  const [sub, setSub] = useState<'idle' | 'busy' | 'ok' | 'err'>('idle');
 
   useEffect(() => {
     document.title = `${BRAND.fullName} | ${BRAND.tagline}`;
@@ -61,13 +59,6 @@ export default function Home() {
     })();
   }, []);
 
-  const subscribe = async (e: FormEvent) => {
-    e.preventDefault(); if (!email) return; setSub('busy');
-    try {
-      const r = await fetch('/api/auth/talent-pool', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, name: email.split('@')[0], domain: 'General', location: 'Unknown' }) });
-      setSub(r.ok ? 'ok' : 'err'); if (r.ok) setEmail('');
-    } catch { setSub('err'); }
-  };
 
   const previewJobs = jobs.slice(0, 6);
 
@@ -81,12 +72,19 @@ export default function Home() {
           <h1 className="anim-up" style={{ animationDelay: '0.07s', fontSize: 'clamp(2.4rem,6.5vw,4.5rem)', fontWeight: 700, color: 'var(--ink)', lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: 24 }}>
             {CONTENT.home.hero.heading}<br /><span className="font-sketch" style={{ color: 'var(--primary)', fontSize: '1.1em' }}>{CONTENT.home.hero.headingAccent}</span>
           </h1>
-          <p className="anim-up" style={{ animationDelay: '0.14s', fontSize: '1.05rem', color: 'var(--muted-ink)', lineHeight: 1.75, maxWidth: 500, margin: '0 auto 36px' }}>
-            {CONTENT.home.hero.subtitle}
-          </p>
+          {/* Hero subtitle split into two lines with visual separation */}
+          <div className="anim-up" style={{ animationDelay: '0.14s', margin: '0 auto 32px', maxWidth: 600, textAlign: 'center' }}>
+            <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', lineHeight: 1.65, marginBottom: 10 }}>
+              {CONTENT.home.hero.subtitleLine1}
+            </div>
+            <div style={{ width: 40, height: 1.5, background: 'rgba(31,111,235,0.3)', borderRadius: 2, margin: '14px auto' }} />
+            <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)', fontStyle: 'italic', opacity: 0.7 }}>
+              {CONTENT.home.hero.subtitleLine2}
+            </div>
+          </div>
           <div className="anim-up hero-cta-group" style={{ animationDelay: '0.2s', display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <Link to="/signup"><Button size="lg">{CONTENT.home.hero.primaryCta} <ArrowRight size={15} /></Button></Link>
-            <Link to="/jobs"><Button variant="ghost" size="lg">{CONTENT.home.hero.secondaryCta}</Button></Link>
+            <Link to="/jobs"><Button size="lg">Browse Jobs <ArrowRight size={15} /></Button></Link>
+            <Link to="/signup"><Button variant="ghost" size="lg">{CONTENT.home.hero.secondaryCta}</Button></Link>
           </div>
         </Container>
         <div className="ticker-wrap" style={{ position: 'relative', overflow: 'hidden', borderTop: '1.25px solid var(--border)', borderBottom: '1.25px solid var(--border)', padding: '13px 0', background: 'var(--surface-solid)', zIndex: 1 }}>
@@ -101,37 +99,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── WHY SECTION ──────────────────────────────── */}
+      {/* ── HOW WE FIND ENGLISH-SPEAKING JOBS — EDITORIAL NUMBERED ROWS ──────────────── */}
       <section style={{ padding: '80px 0', background: 'var(--paper)' }}>
         <Container>
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <p style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--primary)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>How it works</p>
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.4rem,3vw,2rem)', fontWeight: 700, color: 'var(--ink)', lineHeight: 1.2 }}>How we find your next role</h2>
-          </div>
-          <div className="why-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
-            {WHY_CARDS.map((w, i) => (
-              <div
-                key={i}
-                className="why-card anim-up"
-                style={{
-                  animationDelay: `${0.08 + i * 0.1}s`,
-                  position: 'relative',
-                  padding: 28,
-                  borderRadius: 16,
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border)',
-                  borderTop: `3px solid ${w.topBorder}`,
-                  overflow: 'hidden',
-                }}
-              >
-                {/* Faded step number */}
-                <span aria-hidden="true" style={{ position: 'absolute', top: 10, right: 16, fontSize: '2.5rem', fontWeight: 800, color: 'var(--ink)', opacity: 0.06, lineHeight: 1, userSelect: 'none', pointerEvents: 'none' }}>{w.step}</span>
-                {/* Icon */}
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: w.iconBg, border: `1.5px solid ${w.iconBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: w.iconColor, marginBottom: 20, flexShrink: 0 }}>
-                  {w.icon}
+          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.3rem,2.5vw,1.8rem)', fontWeight: 700, textAlign: 'center', color: 'var(--text-primary)', marginBottom: 10 }}>{CONTENT.home.whySection.heading}</h2>
+          <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textAlign: 'center', maxWidth: 480, margin: '0 auto 40px' }}>{CONTENT.home.whySection.subtitle}</div>
+          <div style={{ maxWidth: 680, margin: '0 auto', borderTop: '1px solid var(--border)' }}>
+            {CONTENT.home.why.map((step, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 32, padding: '28px 0', borderBottom: '1px solid var(--border)' }}>
+                {/* Number */}
+                <div style={{ width: 80, flexShrink: 0, fontFamily: 'Playfair Display,serif', fontWeight: 700, fontSize: 'clamp(2rem,4vw,3rem)', color: 'rgba(59,130,246,0.15)', lineHeight: 1, textAlign: 'left' }}>{`0${i + 1}`}</div>
+                {/* Title + Description */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>{step.title}</div>
+                  <div style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.7 }}>{step.desc}</div>
                 </div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>{w.title}</h3>
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{w.body}</p>
               </div>
             ))}
           </div>
@@ -161,24 +143,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── NEWSLETTER ───────────────────────────────── */}
-      <section style={{ padding: '96px 0', position: 'relative', overflow: 'hidden', background: 'var(--paper)', borderTop: '1.25px solid var(--border)' }}>
-        <div className="orb" style={{ width: 400, height: 400, top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: 'var(--primary-soft)' }} />
-        <Container size="sm" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-          <div style={{ width: 52, height: 52, background: 'var(--primary-soft)', border: '1.25px solid var(--primary)', borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', margin: '0 auto 24px' }}><Mail size={22} /></div>
-          <h2 style={{ fontSize: 'clamp(1.7rem,4vw,3rem)', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em', marginBottom: 14 }}>{CONTENT.home.newsletter.heading}</h2>
-          <p style={{ color: 'var(--muted-ink)', marginBottom: 36, lineHeight: 1.75 }}>{CONTENT.home.newsletter.subtitle}</p>
-          <form onSubmit={subscribe} className="newsletter-form" style={{ display: 'flex', gap: 8, maxWidth: 420, margin: '0 auto 16px', flexWrap: 'wrap' }}>
-            <input type="email" required placeholder={CONTENT.home.newsletter.emailPlaceholder} value={email} onChange={e => setEmail(e.target.value)} disabled={sub === 'busy'}
-              style={{ flex: 1, minWidth: 200, padding: '12px 14px', fontFamily: 'inherit', fontSize: '0.925rem', background: 'var(--surface-solid)', color: 'var(--ink)', border: '1.25px solid var(--border)', borderRadius: 10, outline: 'none' }}
-              onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = 'var(--focus-ring)' }}
-              onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }} />
-            <Button loading={sub === 'busy'}>{CONTENT.home.newsletter.subscribeCta}</Button>
-          </form>
-          {sub === 'ok' && <Alert type="success">{CONTENT.home.newsletter.success}</Alert>}
-          {sub === 'err' && <Alert type="error">{CONTENT.home.newsletter.error}</Alert>}
-        </Container>
-      </section>
 
       {/* ── LATEST JOBS ──────────────────────────────── */}
       <section style={{ padding: '80px 0', background: 'var(--surface-solid)', borderTop: '1.25px solid var(--border)' }}>

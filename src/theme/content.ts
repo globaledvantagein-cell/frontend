@@ -21,29 +21,29 @@ export const CONTENT = {
     hero: {
       heading: 'English-Speaking',
       headingAccent: 'Jobs in Germany',
-      subtitle:
-        'We scrape, filter, and review roles from 20+ major German companies — surfacing only the ones where German is genuinely not required.',
-      primaryCta: 'Get Weekly Alerts',
-      secondaryCta: 'Browse Jobs',
-      stats: [
-        ['20+', 'Companies'],
-        ['Daily', 'Fresh scrapes'],
-      ] as const,
+      subtitleLine1: 'We monitor companies in Germany that hire for English-speaking roles and surface verified opportunities where German is not required.',
+      subtitleLine2: 'Every listing is AI-filtered and human-reviewed before it appears on the platform.',
+      primaryCta: 'Browse Jobs →',
+      secondaryCta: 'Get Weekly Alerts',
     },
     why: [
       {
-        title: 'AI-Filtered',
-        body: 'Every listing is scanned to confirm German is not required — not guessed, confirmed.',
+        title: 'Companies We Monitor',
+        desc: 'We identify companies in Germany that regularly hire international talent and offer roles where English is the working language.'
       },
       {
-        title: 'Daily Scrapes',
-        body: 'We scrape 20+ top German employers daily so you always see fresh roles first.',
+        title: 'Job Filtering',
+        desc: 'We review job descriptions and surface roles where German is not required.'
       },
       {
-        title: 'Human Reviewed',
-        body: 'A review layer catches AI mistakes. Only quality, relevant roles reach you.',
+        title: 'Verification',
+        desc: 'Every listing is checked before it appears on the platform to ensure it is relevant for English-speaking professionals.'
       },
     ],
+    whySection: {
+      heading: 'How We Find English-Speaking Jobs',
+      subtitle: 'We focus on identifying roles in Germany where English is used as the working language.'
+    },
     companies: {
       label: 'Hiring partners',
       heading: 'Companies hiring',
@@ -51,14 +51,6 @@ export const CONTENT = {
       fullDirectoryCta: 'Full directory',
       carouselAriaLeft: 'Scroll left',
       carouselAriaRight: 'Scroll right',
-    },
-    newsletter: {
-      heading: 'Never miss a job drop.',
-      subtitle: 'Join 2,000+ professionals. Weekly digest of verified English-only jobs. No spam.',
-      emailPlaceholder: 'your@email.com',
-      subscribeCta: 'Subscribe',
-      success: "You're in — check your inbox soon.",
-      error: 'Something went wrong. Please try again.',
     },
     latest: {
       label: 'Fresh picks',
