@@ -1,7 +1,4 @@
-
-
-
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Search } from 'lucide-react';
 import { companiesPage } from '../theme/companies-content';
@@ -12,7 +9,8 @@ const AVATAR_COLORS = [
     '#D4697A', '#5AADBA', '#7B9E5F', '#C4883D',
     '#6C7FD1', '#D15F8A',
 ];
-function getAvatarColor(name) {
+
+function getAvatarColor(name: string): string {
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
@@ -20,11 +18,20 @@ function getAvatarColor(name) {
 
 import { ExternalLink } from 'lucide-react';
 
-function CompanyCard({ company }) {
+interface Company {
+    companyName: string;
+    source: 'scraped' | 'manual';
+    openRoles: number;
+    cities?: string[];
+    careersUrl?: string;
+    domain?: string;
+}
+
+function CompanyCard({ company }: { company: Company }) {
     const navigate = useNavigate();
     const isScraped = company.source === 'scraped';
 
-    const handleCardClick = (company) => {
+    const handleCardClick = (company: Company) => {
         if (company.source === 'scraped') {
             navigate('/jobs');
         } else if (company.careersUrl) {
@@ -107,7 +114,7 @@ function SkeletonCard() {
 }
 
 export default function CompanyDirectory() {
-    const [companies, setCompanies] = useState(null);
+    const [companies, setCompanies] = useState<Company[] | null>(null);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [showCount, setShowCount] = useState(30);
@@ -130,8 +137,8 @@ export default function CompanyDirectory() {
     // Sort: scraped (openRoles desc), then manual (alpha)
     const sortedCompanies = useMemo(() => {
         if (!companies) return [];
-        const scraped = companies.filter(c => c.source === 'scraped').sort((a, b) => b.openRoles - a.openRoles);
-        const manual = companies.filter(c => c.source === 'manual').sort((a, b) => a.companyName.localeCompare(b.companyName));
+        const scraped = companies.filter((c: Company) => c.source === 'scraped').sort((a: Company, b: Company) => b.openRoles - a.openRoles);
+        const manual = companies.filter((c: Company) => c.source === 'manual').sort((a: Company, b: Company) => a.companyName.localeCompare(b.companyName));
         return [...scraped, ...manual];
     }, [companies]);
 
@@ -139,7 +146,7 @@ export default function CompanyDirectory() {
     const filteredCompanies = useMemo(() => {
         if (!search.trim()) return sortedCompanies;
         const q = search.trim().toLowerCase();
-        return sortedCompanies.filter(c => (c.companyName || '').toLowerCase().includes(q));
+        return sortedCompanies.filter((c: Company) => (c.companyName || '').toLowerCase().includes(q));
     }, [sortedCompanies, search]);
 
     // Stats
@@ -149,7 +156,6 @@ export default function CompanyDirectory() {
     // Show more logic
     const visibleCompanies = search.trim() ? filteredCompanies : filteredCompanies.slice(0, showCount);
     const moreRemaining = search.trim() ? 0 : Math.max(0, filteredCompanies.length - showCount);
-
 
     // Responsive grid columns
     const isMobile = useMediaQuery('(max-width: 767px)');
