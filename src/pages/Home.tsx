@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 // ...existing code...
 import { Link } from 'react-router-dom';
-import { ArrowRight, Briefcase, Shield, Search } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import HomeJobCard from '../components/HomeJobCard';
 import CompanyCard from '../components/DirectoryCard';
 import type { IJob, ICompany } from '../types';
