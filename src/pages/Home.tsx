@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { FormEvent } from 'react';
+// ...existing code...
 import { Link } from 'react-router-dom';
 import { ArrowRight, Briefcase, Shield, Search } from 'lucide-react';
 import HomeJobCard from '../components/HomeJobCard';
@@ -10,38 +10,7 @@ import { BRAND } from '../theme/brand';
 import { CONTENT } from '../theme/content';
 
 const TICKER = CONTENT.home.ticker;
-const WHY_CARDS = [
-  {
-    icon: <Briefcase size={22} />,
-    title: CONTENT.home.why[0].title,
-    body: CONTENT.home.why[0].body,
-    step: '01',
-    iconBg: 'linear-gradient(135deg, rgba(31,111,235,0.15), rgba(139,92,246,0.15))',
-    iconBorder: 'rgba(31,111,235,0.28)',
-    iconColor: 'var(--primary)',
-    topBorder: '#1F6FEB',
-  },
-  {
-    icon: <Search size={22} />,
-    title: CONTENT.home.why[1].title,
-    body: CONTENT.home.why[1].body,
-    step: '02',
-    iconBg: 'linear-gradient(135deg, rgba(52,211,153,0.15), rgba(45,212,191,0.15))',
-    iconBorder: 'rgba(52,211,153,0.28)',
-    iconColor: 'var(--success)',
-    topBorder: '#34D399',
-  },
-  {
-    icon: <Shield size={22} />,
-    title: CONTENT.home.why[2].title,
-    body: CONTENT.home.why[2].body,
-    step: '03',
-    iconBg: 'linear-gradient(135deg, rgba(251,191,36,0.15), rgba(249,115,22,0.15))',
-    iconBorder: 'rgba(251,191,36,0.28)',
-    iconColor: 'var(--warning)',
-    topBorder: '#FBBF24',
-  },
-];
+// ...existing code...
 
 export default function Home() {
   const [jobs, setJobs] = useState<IJob[]>([]);
