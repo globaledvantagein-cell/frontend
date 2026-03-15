@@ -144,6 +144,61 @@ body::before {
   animation: ticker 40s linear infinite;
 }
 
+/* ── Company auto-ticker ───────────────────────────── */
+@keyframes company-ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.company-ticker-wrap {
+  position: relative;
+  overflow: hidden;
+  padding: 4px 0 12px;
+}
+
+.company-ticker-track {
+  display: inline-flex;
+  gap: 16px;
+  animation: company-ticker 30s linear infinite;
+  will-change: transform;
+  /* left padding so first card isn't flush against the gradient edge */
+  padding-left: 24px;
+}
+
+/* Pause when anything inside the ticker is hovered/focused */
+.company-ticker-wrap:hover .company-ticker-track,
+.company-ticker-wrap:focus-within .company-ticker-track {
+  animation-play-state: paused;
+}
+
+/* Fade edges using the section background colour */
+.company-ticker-wrap::before,
+.company-ticker-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.company-ticker-wrap::before {
+  left: 0;
+  background: linear-gradient(to right, var(--surface-solid), transparent);
+}
+
+.company-ticker-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, var(--surface-solid), transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .company-ticker-track {
+    animation-duration: 120s;
+  }
+}
+
 .ticker-wrap::before,
 .ticker-wrap::after {
   content: '';
@@ -382,6 +437,25 @@ body::before {
   border-color: var(--primary) !important;
   transform: translateX(3px);
   box-shadow: var(--shadow-md);
+}
+
+/* ── Why cards ────────────────────────────────────── */
+.why-card {
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (hover: hover) {
+  .why-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .why-card {
+    transition: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1047,6 +1121,11 @@ body::before {
 
   .why-grid {
     grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .why-card {
+    padding: 20px !important;
   }
 
   .newsletter-form {

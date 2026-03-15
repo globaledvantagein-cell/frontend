@@ -30,7 +30,7 @@ export default function CompanyCard({ company, adminActions }: Props) {
       onKeyDown={e => { if (!adminActions && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); visit(); } }}
       style={{
         background: hov ? 'var(--paper2)' : 'var(--surface-solid)',
-        borderColor: hov ? 'var(--border-strong)' : undefined,
+        borderColor: hov ? 'var(--primary)' : undefined,
         padding: '22px 20px',
         cursor: adminActions ? 'default' : 'pointer',
         display: 'flex',
@@ -42,6 +42,7 @@ export default function CompanyCard({ company, adminActions }: Props) {
         minHeight: 140,
         position: 'relative',
         overflow: 'hidden',
+        borderRadius: 12,
       }}
     >
       {/* Primary corner glow on hover */}

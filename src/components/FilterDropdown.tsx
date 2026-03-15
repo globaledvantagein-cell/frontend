@@ -43,9 +43,8 @@ export default function FilterDropdown({
   const isOpen = openId === id;
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [search, setSearch] = useState('');
-  const [panelPos, setPanelPos] = useState<{ top: number; left: number; minWidth: number }>({
-    top: 0, left: 0, minWidth: 100,
-  });
+  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, minWidth: 100 });
+  const [ready, setReady] = useState(false);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -57,7 +56,31 @@ export default function FilterDropdown({
     setPanelPos({ top: rect.bottom + 4, left: rect.left, minWidth: rect.width });
   }, []);
 
-  useEffect(() => { if (isOpen && !isMobile) updatePos(); }, [isOpen, isMobile, updatePos]);
+  const toggleOpen = () => {
+    if (isOpen) {
+      onOpenChange(null);
+      return;
+    }
+
+    if (triggerRef.current && !isMobile) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPanelPos({ top: rect.bottom + 4, left: rect.left, minWidth: rect.width });
+      setReady(true);
+    }
+
+    onOpenChange(id);
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      setReady(false);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || isMobile) return;
+    updatePos();
+  }, [isOpen, isMobile, updatePos]);
 
   useEffect(() => {
     if (!isOpen || isMobile) return;
@@ -69,21 +92,31 @@ export default function FilterDropdown({
     };
   }, [isOpen, isMobile, updatePos]);
 
-  // Close on click / touch outside (desktop only — mobile handled by overlay)
+  // Close on click outside (desktop only — mobile handled by overlay)
   useEffect(() => {
     if (!isOpen || isMobile) return;
-    const handle = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as Node;
-      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return;
-      onOpenChange(null);
-    };
-    document.addEventListener('mousedown', handle);
-    document.addEventListener('touchstart', handle);
+
+    let handler: ((e: MouseEvent | TouchEvent) => void) | null = null;
+
+    const rafId = requestAnimationFrame(() => {
+      handler = (e: MouseEvent | TouchEvent) => {
+        const target = e.target as Node;
+        if (triggerRef.current?.contains(target)) return;
+        if (panelRef.current?.contains(target)) return;
+        if ((target as HTMLElement).closest?.(`[data-dropdown-id="${id}"]`)) return;
+        onOpenChange(null);
+      };
+
+      document.addEventListener('mousedown', handler);
+    });
+
     return () => {
-      document.removeEventListener('mousedown', handle);
-      document.removeEventListener('touchstart', handle);
+      cancelAnimationFrame(rafId);
+      if (handler) {
+        document.removeEventListener('mousedown', handler);
+      }
     };
-  }, [isOpen, isMobile, onOpenChange]);
+  }, [isOpen, isMobile, onOpenChange, id]);
 
   // Escape to close
   useEffect(() => {
@@ -97,7 +130,10 @@ export default function FilterDropdown({
   useEffect(() => {
     if (!isOpen) {
       setSearch('');
-    } else if (searchable) {
+      return;
+    }
+
+    if (searchable) {
       setTimeout(() => searchRef.current?.focus(), 30);
     }
   }, [isOpen, searchable]);
@@ -134,6 +170,7 @@ export default function FilterDropdown({
               type="button"
               role="option"
               aria-selected={selected}
+              onMouseDown={e => e.stopPropagation()}
               onClick={() => selectOption(option.value)}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -141,19 +178,28 @@ export default function FilterDropdown({
                 padding: isMobile ? '14px 16px' : '8px 12px',
                 fontSize: isMobile ? '0.92rem' : '0.8rem',
                 minHeight: isMobile ? 48 : undefined,
-                background: 'transparent',
+                  background: selected ? 'var(--acid-soft)' : 'transparent',
                 border: 'none', cursor: 'pointer',
                 color: selected ? 'var(--acid)' : 'var(--text-secondary)',
                 textAlign: 'left', fontFamily: 'inherit',
+                  fontWeight: selected ? 600 : 400,
                 borderBottom: isMobile ? '1px solid var(--border)' : 'none',
+                  borderLeft: selected ? '2px solid var(--acid)' : '2px solid transparent',
+                  transition: 'all 0.12s ease',
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = 'var(--bg-surface)';
-                if (!selected) e.currentTarget.style.color = 'var(--text-primary)';
+                  if (!selected) {
+                    e.currentTarget.style.background = 'var(--bg-surface)';
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                    e.currentTarget.style.paddingLeft = isMobile ? '18px' : '14px';
+                  }
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = selected ? 'var(--acid)' : 'var(--text-secondary)';
+                  if (!selected) {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                    e.currentTarget.style.paddingLeft = isMobile ? '16px' : '12px';
+                  }
               }}
             >
               <span>{option.label}</span>
@@ -204,19 +250,26 @@ export default function FilterDropdown({
     </>
   ) : null;
 
-  // ── DESKTOP: floating panel ────────────────────────────
-  const panelWidth = searchable ? Math.max(panelPos.minWidth, 220) : panelPos.minWidth;
-  const desktopPanel = isOpen && !isMobile ? (
+  const desktopPanel = isOpen && !isMobile && ready ? (
     <div
       ref={panelRef}
+      data-dropdown-id={id}
       role="listbox"
       style={{
-        position: 'fixed', top: panelPos.top, left: panelPos.left,
-        minWidth: panelPos.minWidth, width: panelWidth,
-        zIndex: 9999,
-        background: 'var(--bg-surface-2)', border: '1px solid var(--border)', borderRadius: 8,
+        position: 'fixed',
+        top: panelPos.top,
+        left: panelPos.left,
+        minWidth: panelPos.minWidth,
+        width: searchable ? Math.max(panelPos.minWidth, 220) : panelPos.minWidth,
+        zIndex: 10001,
+        background: 'var(--bg-surface-2)',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
         boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
-        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        animation: 'fadeIn 0.08s ease both',
       }}
     >
       {searchable && (
@@ -225,6 +278,7 @@ export default function FilterDropdown({
             ref={searchRef}
             value={search}
             onChange={e => setSearch(e.target.value)}
+            onMouseDown={e => e.stopPropagation()}
             placeholder="Search companies…"
             style={{
               width: '100%', height: 28, fontSize: '0.75rem',
@@ -254,22 +308,30 @@ export default function FilterDropdown({
         <button
           ref={triggerRef}
           type="button"
-          onClick={() => onOpenChange(isOpen ? null : id)}
+          onClick={toggleOpen}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
           aria-label={`${label}: ${displayLabel}`}
           style={{
-            height: 36, fontSize: 'clamp(0.7rem, 1.3vw, 0.8rem)',
-            color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-            background: 'var(--bg-surface-2)',
-            border: `1px solid ${active ? 'var(--acid)' : 'var(--border)'}`,
+            height: 34, fontSize: '0.76rem',
+            color: active ? 'var(--acid)' : 'var(--text-secondary)',
+            background: active ? 'var(--acid-soft)' : 'var(--bg-surface-2)',
+            border: `1.5px solid ${active ? 'var(--acid)' : 'var(--border)'}`,
             borderRadius: 8, paddingLeft: 10, paddingRight: 28,
             outline: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center',
             width: '100%', textAlign: 'left', position: 'relative', fontFamily: 'inherit',
+            transition: 'all 0.2s ease',
+            fontWeight: active ? 600 : 400,
           }}
         >
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+          <span
+            style={{
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}
+          >
+            {active && <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--acid)', flexShrink: 0 }} />}
             {displayLabel}
           </span>
           <ChevronDown
@@ -277,7 +339,7 @@ export default function FilterDropdown({
             style={{
               position: 'absolute', right: 8, top: '50%',
               transform: `translateY(-50%) rotate(${isOpen ? 180 : 0}deg)`,
-              transition: 'transform 0.18s', color: 'var(--text-muted)', pointerEvents: 'none',
+              transition: 'transform 0.18s', color: active ? 'var(--acid)' : 'var(--text-muted)', pointerEvents: 'none',
             }}
           />
         </button>

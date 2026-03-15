@@ -2,7 +2,8 @@
 // Change these to rebrand the entire app instantly
 
 export const BRAND = {
-  appName: 'EnglishJobs',
+  appName: 'English Jobs in Germany',
+  shortName: 'English Jobs',
   tagline: 'No German Required',
   fullName: 'English Jobs in Germany',
   description: 'Curated English-speaking jobs at top German companies. No German required.',

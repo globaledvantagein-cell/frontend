@@ -1,20 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { ArrowLeft, ExternalLink, MapPin, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { ArrowLeft, ExternalLink, MapPin, Search, SlidersHorizontal, X } from 'lucide-react';
 import type { IJob } from '../types';
 import FormattedDescription from '../components/FormattedDescription';
-import { getVisitorId } from '../components/JobCard';
+import { getVisitorId } from '../utils/visitorId';
 import { Badge, Button, Container, EmptyState, Input } from '../components/ui';
 import FilterDropdown from '../components/FilterDropdown';
 import { BRAND } from '../theme/brand';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useSearchParams } from 'react-router-dom';
 
 const EXPERIENCE_OPTIONS = ['Entry', 'Mid', 'Senior', 'Lead', 'Staff'];
 const WORKPLACE_OPTIONS = ['Remote', 'Onsite', 'Hybrid'];
-const BOARD_OPTIONS = [
-  { value: 'greenhouse', label: 'Greenhouse' },
-  { value: 'ashby', label: 'Ashby' },
-  { value: 'lever', label: 'Lever' },
-];
 
 const SORT_DROPDOWN_OPTIONS = [
   { value: 'newest', label: 'Newest first' },
@@ -44,11 +40,6 @@ const DATE_DROPDOWN_OPTIONS = [
   { value: 'This Month', label: 'This month' },
 ];
 
-const BOARD_DROPDOWN_OPTIONS = [
-  { value: 'All', label: 'All' },
-  ...BOARD_OPTIONS.map(o => ({ value: o.value, label: o.label })),
-];
-
 type SortOption = 'newest' | 'company';
 type DateFilter = 'All' | 'Today' | 'This Week' | 'This Month';
 
@@ -57,8 +48,6 @@ type FilterState = {
   experience: string;
   workplace: string;
   date: DateFilter;
-  board: string;
-  company: string;
   sort: SortOption;
   search: string;
 };
@@ -86,19 +75,38 @@ function relativeDate(value?: string | null) {
   return `${Math.floor(diff / 30)}mo ago`;
 }
 
+function normalizeSalary(value: number | null, interval: string | null): number | null {
+  if (value == null || value <= 0) return null;
+
+  const normalizedInterval = String(interval || '').toLowerCase();
+  const isAnnual = !normalizedInterval || normalizedInterval === 'per-year-salary' || normalizedInterval === 'yearly';
+  if (isAnnual && value > 0 && value < 1000) return value * 1000;
+
+  const isMonthly = normalizedInterval === 'per-month-salary' || normalizedInterval === 'monthly';
+  if (isMonthly && value > 0 && value < 100) return value * 1000;
+
+  return value;
+}
+
 function compactSalary(job: IJob) {
-  if (job.SalaryMin == null && job.SalaryMax == null) return null;
+  const min = normalizeSalary(job.SalaryMin, job.SalaryInterval);
+  const max = normalizeSalary(job.SalaryMax, job.SalaryInterval);
+  if (min == null && max == null) return null;
+
   const symbol = job.SalaryCurrency === 'EUR' ? '€' : job.SalaryCurrency === 'USD' ? '$' : '';
-  const min = job.SalaryMin != null ? `${Math.round(job.SalaryMin / 1000)}K` : null;
-  const max = job.SalaryMax != null ? `${Math.round(job.SalaryMax / 1000)}K` : null;
-  if (min && max) return `${symbol}${min}-${max}`;
-  if (min) return `${symbol}${min}+`;
-  if (max) return `${symbol}${max}`;
+  const formattedMin = min != null && min > 0 ? `${Math.round(min / 1000)}K` : null;
+  const formattedMax = max != null && max > 0 ? `${Math.round(max / 1000)}K` : null;
+
+  if (formattedMin && formattedMax) return `${symbol}${formattedMin}-${formattedMax}`;
+  if (formattedMin) return `${symbol}${formattedMin}+`;
+  if (formattedMax) return `${symbol}${formattedMax}`;
   return null;
 }
 
 function detailedSalary(job: IJob) {
-  if (job.SalaryMin == null && job.SalaryMax == null) return null;
+  const min = normalizeSalary(job.SalaryMin, job.SalaryInterval);
+  const max = normalizeSalary(job.SalaryMax, job.SalaryInterval);
+  if (min == null && max == null) return null;
 
   const symbol = job.SalaryCurrency === 'EUR' ? '€' : job.SalaryCurrency === 'USD' ? '$' : (job.SalaryCurrency ? `${job.SalaryCurrency} ` : '');
   const interval = job.SalaryInterval === 'per-year-salary'
@@ -107,15 +115,15 @@ function detailedSalary(job: IJob) {
       ? '/ month'
       : job.SalaryInterval === 'per-hour-wage'
         ? '/ hour'
-        : '';
+        : '/ year';
 
   const formatter = new Intl.NumberFormat('en-US');
-  const min = job.SalaryMin != null ? formatter.format(job.SalaryMin) : null;
-  const max = job.SalaryMax != null ? formatter.format(job.SalaryMax) : null;
+  const formattedMin = min != null && min > 0 ? formatter.format(min) : null;
+  const formattedMax = max != null && max > 0 ? formatter.format(max) : null;
 
-  if (min && max) return `${symbol}${min} - ${symbol}${max}${interval}`;
-  if (min) return `${symbol}${min}+${interval}`;
-  if (max) return `${symbol}${max}${interval}`;
+  if (formattedMin && formattedMax) return `${symbol}${formattedMin} - ${symbol}${formattedMax} ${interval}`;
+  if (formattedMin) return `${symbol}${formattedMin}+ ${interval}`;
+  if (formattedMax) return `${symbol}${formattedMax} ${interval}`;
   return null;
 }
 
@@ -123,14 +131,6 @@ function isMeaningful(value?: string | null) {
   if (!value) return false;
   const normalized = value.trim();
   return Boolean(normalized) && normalized.toLowerCase() !== 'n/a';
-}
-
-function isCleanDepartment(value?: string | null) {
-  if (!isMeaningful(value)) return false;
-  const normalized = String(value).trim();
-  if (normalized.length > 30) return false;
-  if (/\d/.test(normalized)) return false;
-  return true;
 }
 
 function parseAllLocations(job: IJob) {
@@ -168,8 +168,66 @@ function matchesDateFilter(job: IJob, filter: DateFilter) {
   return true;
 }
 
-function normalizeBoard(value?: string | null) {
-  return String(value || '').trim().toLowerCase();
+function normalizeExperience(value?: string | null): string {
+  if (!value) return 'N/A';
+  const lower = value.trim().toLowerCase();
+  if (lower === 'entry' || lower === 'junior' || lower === 'intern' || lower === 'entry level' || lower === 'entry-level') return 'Entry';
+  if (lower === 'mid' || lower === 'mid-level' || lower === 'intermediate' || lower === 'regular') return 'Mid';
+  if (lower === 'senior' || lower === 'sr' || lower === 'sr.' || lower === 'senior level') return 'Senior';
+  if (lower === 'lead' || lower === 'principal' || lower === 'tech lead') return 'Lead';
+  if (lower === 'staff' || lower === 'staff+' || lower === 'distinguished') return 'Staff';
+  return 'N/A';
+}
+
+function deriveExperienceFromTitle(title?: string | null): string {
+  const lower = String(title || '').toLowerCase();
+  if (/\b(staff|distinguished)\b/.test(lower)) return 'Staff';
+  if (/\b(lead|principal|tech lead)\b/.test(lower)) return 'Lead';
+  if (/\b(senior|sr\.?)\b/.test(lower)) return 'Senior';
+  if (/\b(junior|jr\.?|entry|associate|graduate)\b/.test(lower)) return 'Entry';
+  return 'Mid';
+}
+
+function normalizeWorkplace(value?: string | null): string {
+  if (!value) return 'Unspecified';
+  const lower = value.trim().toLowerCase();
+  if (lower === 'remote' || lower === 'fully remote' || lower === 'work from home') return 'Remote';
+  if (lower === 'onsite' || lower === 'on-site' || lower === 'in-office' || lower === 'office') return 'Onsite';
+  if (lower === 'hybrid' || lower === 'flex' || lower === 'flexible') return 'Hybrid';
+  return 'Unspecified';
+}
+
+function matchesExperienceFilter(job: IJob, selectedExperience: string) {
+  if (selectedExperience === 'All') return true;
+
+  const stored = normalizeExperience(job.ExperienceLevel).toLowerCase();
+  const filterValue = selectedExperience.toLowerCase();
+
+  if (stored === filterValue) return true;
+
+  if (stored === 'n/a' || stored === '') {
+    return deriveExperienceFromTitle(job.JobTitle).toLowerCase() === filterValue;
+  }
+
+  return false;
+}
+
+function matchesWorkplaceFilter(job: IJob, selectedWorkplace: string) {
+  if (selectedWorkplace === 'All') return true;
+
+  const stored = normalizeWorkplace(job.WorkplaceType).toLowerCase();
+  const filterValue = selectedWorkplace.toLowerCase();
+
+  if (stored === filterValue) return true;
+
+  if (stored === 'unspecified' || stored === '') {
+    const location = String(job.Location || '').toLowerCase();
+    if (filterValue === 'remote') return location.includes('remote');
+    if (filterValue === 'hybrid') return location.includes('hybrid');
+    return false;
+  }
+
+  return false;
 }
 
 function sortJobs(jobs: IJob[], sort: SortOption) {
@@ -185,8 +243,8 @@ function sortJobs(jobs: IJob[], sort: SortOption) {
 }
 
 const FILTER_CONTROL_STYLE: CSSProperties = {
-  height: 36,
-  fontSize: '0.78rem',
+  height: 34,
+  fontSize: '0.76rem',
   color: 'var(--text-secondary)',
   background: 'var(--bg-surface-2)',
   border: '1px solid var(--border)',
@@ -196,10 +254,10 @@ const FILTER_CONTROL_STYLE: CSSProperties = {
 };
 
 export default function Dashboard() {
+  const [searchParams] = useSearchParams();
   const [jobs, setJobs] = useState<IJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [splitHeight, setSplitHeight] = useState<number | null>(null);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
@@ -208,14 +266,15 @@ export default function Dashboard() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const filtersRef = useRef<HTMLDivElement | null>(null);
   const splitViewRef = useRef<HTMLDivElement | null>(null);
+  const desktopJobRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const handledDeepLinkRef = useRef<string | null>(null);
   const savedScrollRef = useRef(0);
+  const deepLinkedJobId = searchParams.get('id');
   const [filters, setFilters] = useState<FilterState>({
     domain: 'All',
     experience: 'All',
     workplace: 'All',
     date: 'All',
-    board: 'All',
-    company: 'All',
     sort: 'newest',
     search: '',
   });
@@ -239,28 +298,21 @@ export default function Dashboard() {
     })();
   }, []);
 
-  const companyOptions = useMemo(() => {
-    return [...new Set(jobs.map(job => job.Company).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  }, [jobs]);
-
-  const companyDropdownOptions = useMemo(() => [
-    { value: 'All', label: 'All companies' },
-    ...companyOptions.map(c => ({ value: c, label: c })),
-  ], [companyOptions]);
-
   const filteredJobs = useMemo(() => {
     const search = filters.search.trim().toLowerCase();
 
     const filtered = jobs.filter(job => {
-      if (filters.domain !== 'All' && (job.Domain || 'Unclear') !== filters.domain) return false;
-      if (filters.experience !== 'All' && (job.ExperienceLevel || 'N/A') !== filters.experience) return false;
-      if (filters.workplace !== 'All' && (job.WorkplaceType || 'Unspecified') !== filters.workplace) return false;
+      if (filters.domain !== 'All' && (job.Domain || 'Unclear').toLowerCase() !== filters.domain.toLowerCase()) return false;
+      if (!matchesExperienceFilter(job, filters.experience)) return false;
+      if (!matchesWorkplaceFilter(job, filters.workplace)) return false;
       if (!matchesDateFilter(job, filters.date)) return false;
-      if (filters.board !== 'All' && normalizeBoard(job.ATSPlatform) !== filters.board) return false;
-      if (filters.company !== 'All' && job.Company !== filters.company) return false;
 
       if (!search) return true;
-      return job.JobTitle.toLowerCase().includes(search) || job.Company.toLowerCase().includes(search);
+      return (
+        job.JobTitle.toLowerCase().includes(search)
+        || job.Company.toLowerCase().includes(search)
+        || (job.Location || '').toLowerCase().includes(search)
+      );
     });
 
     return sortJobs(filtered, filters.sort);
@@ -273,13 +325,10 @@ export default function Dashboard() {
       || filters.experience !== 'All'
       || filters.workplace !== 'All'
       || filters.date !== 'All'
-      || filters.board !== 'All'
-      || filters.company !== 'All'
-      || filters.sort !== 'newest'
     );
   }, [filters]);
 
-  const activeFilterCount = [filters.domain, filters.experience, filters.workplace, filters.date, filters.board, filters.company]
+  const activeFilterCount = [filters.domain, filters.experience, filters.workplace, filters.date]
     .filter(v => v !== 'All').length + (filters.search.trim() ? 1 : 0);
 
   useEffect(() => {
@@ -290,22 +339,42 @@ export default function Dashboard() {
     }
 
     const exists = filteredJobs.some(job => job._id === selectedJobId);
-    if (!exists && selectedJobId) {
-      setSelectedJobId(null);
-      setMobileDetailOpen(false);
-      return;
-    }
-
-    if (!hasInitializedSelection && !selectedJobId && filteredJobs.length > 0) {
+    if (!exists) {
       setSelectedJobId(filteredJobs[0]._id);
-      setHasInitializedSelection(true);
+      if (isMobile) setMobileDetailOpen(false);
     }
-  }, [filteredJobs, selectedJobId, hasInitializedSelection]);
+  }, [filteredJobs, selectedJobId, isMobile]);
+
+  useEffect(() => {
+    if (!deepLinkedJobId || handledDeepLinkRef.current === deepLinkedJobId) return;
+
+    const deepLinkedJob = filteredJobs.find(job => job._id === deepLinkedJobId);
+    if (!deepLinkedJob) return;
+
+    setSelectedJobId(deepLinkedJob._id);
+    handledDeepLinkRef.current = deepLinkedJobId;
+
+    if (isMobile) {
+      savedScrollRef.current = window.scrollY;
+      setMobileDetailOpen(true);
+    }
+  }, [filteredJobs, deepLinkedJobId, isMobile]);
 
   const selectedJob = useMemo(() => {
     if (!selectedJobId) return null;
     return filteredJobs.find(job => job._id === selectedJobId) || null;
   }, [filteredJobs, selectedJobId]);
+
+  useEffect(() => {
+    if (!selectedJobId || isMobile) return;
+
+    const node = desktopJobRefs.current[selectedJobId];
+    if (!node) return;
+
+    requestAnimationFrame(() => {
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }, [selectedJobId, isMobile, filteredJobs.length]);
 
   useEffect(() => {
     const updateSplitHeight = () => {
@@ -340,24 +409,46 @@ export default function Dashboard() {
   const desktopSplitHeight = splitHeight ? `${splitHeight}px` : undefined;
 
   const clearFilters = () => {
-    setFilters({
+    setFilters(previous => ({
+      ...previous,
       domain: 'All',
       experience: 'All',
       workplace: 'All',
       date: 'All',
-      board: 'All',
-      company: 'All',
-      sort: 'newest',
       search: '',
-    });
+    }));
   };
 
-  const vote = async (jobId: string, status: 'up' | 'down') => {
+  const renderClearAllButton = () => {
+    if (!hasActiveFilters) return null;
+
+    return (
+      <button
+        onClick={clearFilters}
+        style={{
+          height: 34, paddingInline: 12, borderRadius: 8,
+          border: '1px solid var(--border)',
+          background: 'var(--bg-surface-2)',
+          color: 'var(--text-muted)',
+          fontSize: '0.74rem', fontWeight: 500,
+          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
+          whiteSpace: 'nowrap', flexShrink: 0,
+          transition: 'all 0.2s ease',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)'; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+      >
+        <X size={11} /> Clear all
+      </button>
+    );
+  };
+
+  const trackApplyClick = async (jobId: string) => {
     try {
-      const response = await fetch(`/api/jobs/${jobId}/feedback`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/jobs/${jobId}/apply-click`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, visitorId: getVisitorId() })
+        body: JSON.stringify({ visitorId: getVisitorId() })
       });
 
       const payload = await response.json();
@@ -367,9 +458,7 @@ export default function Dashboard() {
         if (job._id !== jobId) return job;
         return {
           ...job,
-          thumbsUp: payload.thumbsUp ?? job.thumbsUp,
-          thumbsDown: payload.thumbsDown ?? job.thumbsDown,
-          userVote: payload.userVote ?? null,
+          applyClicks: payload.applyClicks ?? job.applyClicks ?? 0,
         };
       }));
     } catch (error) {
@@ -402,7 +491,7 @@ export default function Dashboard() {
         openId={openDropdown}
         onOpenChange={setOpenDropdown}
         active={filters.domain !== 'All'}
-        width={widthOverride ?? 120}
+        width={widthOverride ?? 130}
       />
       <FilterDropdown
         id="experience"
@@ -413,7 +502,7 @@ export default function Dashboard() {
         openId={openDropdown}
         onOpenChange={setOpenDropdown}
         active={filters.experience !== 'All'}
-        width={widthOverride ?? 110}
+        width={widthOverride ?? 130}
       />
       <FilterDropdown
         id="workplace"
@@ -424,7 +513,7 @@ export default function Dashboard() {
         openId={openDropdown}
         onOpenChange={setOpenDropdown}
         active={filters.workplace !== 'All'}
-        width={widthOverride ?? 120}
+        width={widthOverride ?? 130}
       />
       <FilterDropdown
         id="date"
@@ -435,30 +524,7 @@ export default function Dashboard() {
         openId={openDropdown}
         onOpenChange={setOpenDropdown}
         active={filters.date !== 'All'}
-        width={widthOverride ?? 110}
-      />
-      <FilterDropdown
-        id="board"
-        label="Board"
-        value={filters.board}
-        options={BOARD_DROPDOWN_OPTIONS}
-        onChange={val => setFilters(previous => ({ ...previous, board: val }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.board !== 'All'}
-        width={widthOverride ?? 110}
-      />
-      <FilterDropdown
-        id="company"
-        label="Companies"
-        value={filters.company}
-        options={companyDropdownOptions}
-        onChange={val => setFilters(previous => ({ ...previous, company: val }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.company !== 'All'}
-        width={widthOverride ?? 150}
-        searchable
+        width={widthOverride ?? 120}
       />
     </>
   );
@@ -473,45 +539,23 @@ export default function Dashboard() {
           <h1 style={{ fontSize: 'clamp(1.45rem, 3.8vw, 2rem)', fontFamily: "'Playfair Display',serif", color: 'var(--text-primary)' }}>
             Browse English-Speaking Roles
           </h1>
-          <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: 6 }}>
+          <p
+            key={filteredJobs.length}
+            style={{
+              fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: 6,
+              animation: 'fadeIn 0.3s ease both',
+            }}
+          >
             {filteredJobs.length} of {jobs.length} roles available
           </p>
         </Container>
       </div>
 
       <Container style={{ padding: '20px 24px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div ref={filtersRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, marginBottom: 14, flexShrink: 0 }}>
+        <div ref={filtersRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 14, flexShrink: 0 }}>
           {/* Mobile filter bar: search + filter pill button */}
           <div className="filter-bar-mobile">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div className="relative" style={{ flex: 1, minWidth: 0 }}>
-                <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                <Input
-                  value={filters.search}
-                  onChange={event => setFilters(previous => ({ ...previous, search: event.target.value }))}
-                  placeholder="Search jobs..."
-                  style={{ ...FILTER_CONTROL_STYLE, width: '100%', paddingLeft: 32, color: 'var(--text-secondary)', borderColor: filters.search.trim() ? 'var(--acid)' : undefined }}
-                />
-              </div>
-              <button
-                onClick={() => setFilterSheetOpen(true)}
-                style={{
-                  height: 36, paddingInline: 14, borderRadius: 8, border: '1px solid',
-                  borderColor: activeFilterCount > 0 ? 'var(--acid)' : 'var(--border)',
-                  background: activeFilterCount > 0 ? 'var(--acid-soft)' : 'var(--bg-surface-2)',
-                  color: activeFilterCount > 0 ? 'var(--acid)' : 'var(--text-secondary)',
-                  fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
-                }}
-              >
-                <SlidersHorizontal size={13} />
-                Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-              </button>
-            </div>
-          </div>
-
-          {/* Tablet filter bar: two rows */}
-          <div className="filter-bar-tablet">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div className="relative" style={{ flex: 1, minWidth: 0 }}>
                   <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
@@ -522,23 +566,57 @@ export default function Dashboard() {
                     style={{ ...FILTER_CONTROL_STYLE, width: '100%', paddingLeft: 32, color: 'var(--text-secondary)', borderColor: filters.search.trim() ? 'var(--acid)' : undefined }}
                   />
                 </div>
-                {renderSortSelect(150)}
+                <button
+                  onClick={() => setFilterSheetOpen(true)}
+                  style={{
+                    height: 34, paddingInline: 14, borderRadius: 999, border: '1px solid',
+                    borderColor: activeFilterCount > 0 ? 'var(--acid)' : 'var(--border)',
+                    background: activeFilterCount > 0 ? 'var(--acid-soft)' : 'var(--bg-surface-2)',
+                    color: activeFilterCount > 0 ? 'var(--acid)' : 'var(--text-secondary)',
+                    fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
+                  }}
+                >
+                  <SlidersHorizontal size={13} />
+                  Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                </button>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                {filteredJobs.length} of {jobs.length} jobs
+              </span>
+            </div>
+          </div>
+
+          {/* Tablet filter bar: two rows */}
+          <div className="filter-bar-tablet">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div className="relative" style={{ flex: 1, minWidth: 0 }}>
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                  <Input
+                    value={filters.search}
+                    onChange={event => setFilters(previous => ({ ...previous, search: event.target.value }))}
+                    placeholder="Search jobs..."
+                    style={{ ...FILTER_CONTROL_STYLE, width: '100%', paddingLeft: 32, color: 'var(--text-secondary)', borderColor: filters.search.trim() ? 'var(--acid)' : undefined }}
+                  />
+                </div>
+                {renderSortSelect(120)}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 {renderFilterSelects()}
-                {hasActiveFilters && (
-                  <button onClick={clearFilters} style={{ marginLeft: 'auto', flexShrink: 0, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    Clear filters
-                  </button>
-                )}
+                <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {filteredJobs.length} of {jobs.length} jobs
+                  </span>
+                  {renderClearAllButton()}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Desktop filter bar: one row */}
           <div className="filter-bar-full">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div className="relative" style={{ width: 200, minWidth: 180, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="relative" style={{ flex: 1, minWidth: 180, maxWidth: 300 }}>
                 <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                 <Input
                   value={filters.search}
@@ -547,13 +625,14 @@ export default function Dashboard() {
                   style={{ ...FILTER_CONTROL_STYLE, width: '100%', paddingLeft: 32, color: 'var(--text-secondary)', borderColor: filters.search.trim() ? 'var(--acid)' : undefined }}
                 />
               </div>
-              {renderSortSelect(150)}
+              {renderSortSelect(120)}
               {renderFilterSelects()}
-              {hasActiveFilters && (
-                <button onClick={clearFilters} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  Clear filters
-                </button>
-              )}
+              <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {filteredJobs.length} of {jobs.length} jobs
+                </span>
+                {renderClearAllButton()}
+              </div>
             </div>
           </div>
         </div>
@@ -609,8 +688,6 @@ export default function Dashboard() {
           <div className="flex flex-col gap-3">
             {[1, 2, 3].map(index => <div key={index} className="skeleton" style={{ height: 132 }} />)}
           </div>
-        ) : filteredJobs.length === 0 ? (
-          <EmptyState title="No jobs found" body="Try adjusting your filters or search query." />
         ) : (
           <>
             {/* Desktop/Tablet split view — controlled via .split-grid CSS class */}
@@ -626,13 +703,28 @@ export default function Dashboard() {
             >
               <section style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface)', minHeight: 0, height: desktopSplitHeight, overflowY: 'auto' }}>
                 <div className="flex flex-col" style={{ gap: 8, padding: 12 }}>
-                  {filteredJobs.map(job => {
+                  {filteredJobs.length === 0 ? (
+                    <EmptyState
+                      title="No jobs match your filters"
+                      body={`Try adjusting your filters. ${jobs.length} total jobs available.`}
+                      action={
+                        hasActiveFilters ? (
+                          <Button variant="ghost" size="sm" onClick={clearFilters}>
+                            Clear all filters
+                          </Button>
+                        ) : undefined
+                      }
+                    />
+                  ) : filteredJobs.map(job => {
                     const selected = selectedJobId === job._id;
                     const salary = compactSalary(job);
+                    const normalizedWorkplace = normalizeWorkplace(job.WorkplaceType);
+                    const showWorkplaceBadge = normalizedWorkplace === 'Remote' || normalizedWorkplace === 'Hybrid';
 
                     return (
                       <button
                         key={job._id}
+                        ref={node => { desktopJobRefs.current[job._id] = node; }}
                         onClick={() => setSelectedJobId(job._id)}
                         style={{
                           border: selected ? '1px solid var(--acid)' : '1px solid var(--border)',
@@ -650,14 +742,13 @@ export default function Dashboard() {
                         <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {job.Company} | {getPrimaryLocation(job, parseAllLocations(job))}
                         </p>
-                        <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: 4 }}>{relativeDate(job.PostedDate || job.scrapedAt)}</p>
 
-                        <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
-                          {isCleanDepartment(job.Department) && <Badge variant="neutral" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{job.Department}</Badge>}
-                          {isMeaningful(job.WorkplaceType) && job.WorkplaceType !== 'Unspecified' && <Badge variant="blue" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{job.WorkplaceType}</Badge>}
-                          {isMeaningful(job.EmploymentType) && <Badge variant="neutral" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{job.EmploymentType}</Badge>}
-                          {salary && <Badge variant="green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{salary}</Badge>}
-                        </div>
+                        {(showWorkplaceBadge || salary) && (
+                          <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
+                            {showWorkplaceBadge && <Badge variant="blue" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{normalizedWorkplace}</Badge>}
+                            {salary && <Badge variant="green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{salary}</Badge>}
+                          </div>
+                        )}
                       </button>
                     );
                   })}
@@ -667,27 +758,39 @@ export default function Dashboard() {
               <section style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface)', padding: 16, minHeight: 0, height: desktopSplitHeight, overflowY: 'auto' }}>
                 {!selectedJob
                   ? <EmptyState title="Select a job from the list to view details" body="Pick any role on the left panel." />
-                  : <PublicJobDetail job={selectedJob} onVote={vote} />}
+                  : <PublicJobDetail job={selectedJob} onTrackApplyClick={trackApplyClick} />}
               </section>
             </div>
 
             {/* Mobile-only job list */}
             <div className="mobile-list-only flex flex-col gap-2">
-              {filteredJobs.map(job => (
-                <button
-                  key={job._id}
-                  onClick={() => {
-                    setSelectedJobId(job._id);
-                    savedScrollRef.current = window.scrollY;
-                    setMobileDetailOpen(true);
-                  }}
-                  style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-surface)', padding: '14px 12px', textAlign: 'left', width: '100%' }}
-                >
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3 }}>{job.JobTitle}</p>
-                  <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 4 }}>{job.Company} · {getPrimaryLocation(job, parseAllLocations(job))}</p>
-                  <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: 3 }}>{relativeDate(job.PostedDate || job.scrapedAt)}</p>
-                </button>
-              ))}
+              {filteredJobs.length === 0 ? (
+                <EmptyState
+                  title="No jobs match your filters"
+                  body={`Try adjusting your filters. ${jobs.length} total jobs available.`}
+                  action={
+                    hasActiveFilters ? (
+                      <Button variant="ghost" size="sm" onClick={clearFilters}>
+                        Clear all filters
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ) : filteredJobs.map(job => (
+                  <button
+                    key={job._id}
+                    onClick={() => {
+                      setSelectedJobId(job._id);
+                      savedScrollRef.current = window.scrollY;
+                      setMobileDetailOpen(true);
+                    }}
+                    style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-surface)', padding: '14px 12px', textAlign: 'left', width: '100%' }}
+                  >
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3 }}>{job.JobTitle}</p>
+                    <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 4 }}>{job.Company} · {getPrimaryLocation(job, parseAllLocations(job))}</p>
+                    <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: 3 }}>{relativeDate(job.PostedDate || job.scrapedAt)}</p>
+                  </button>
+                ))}
             </div>
 
             {/* Mobile detail overlay */}
@@ -705,7 +808,7 @@ export default function Dashboard() {
                   </button>
                 </div>
                 <div className="mobile-detail-body">
-                  <PublicJobDetail job={selectedJob} onVote={vote} />
+                  <PublicJobDetail job={selectedJob} onTrackApplyClick={trackApplyClick} />
                 </div>
               </div>
             )}
@@ -716,37 +819,47 @@ export default function Dashboard() {
   );
 }
 
-function PublicJobDetail({ job, onVote }: { job: IJob; onVote: (jobId: string, status: 'up' | 'down') => void }) {
+function PublicJobDetail({ job, onTrackApplyClick }: { job: IJob; onTrackApplyClick: (jobId: string) => Promise<void> }) {
   const [showAllLocations, setShowAllLocations] = useState(false);
+  const [trackingApply, setTrackingApply] = useState(false);
 
   const allLocations = parseAllLocations(job);
   const primaryLocation = getPrimaryLocation(job, allLocations);
   const extraLocations = allLocations.slice(1);
   const salary = detailedSalary(job);
+  const normalizedWorkplace = normalizeWorkplace(job.WorkplaceType);
+  const showWorkplaceBadge = normalizedWorkplace === 'Remote' || normalizedWorkplace === 'Hybrid';
+
+  const handleApplyNow = async () => {
+    window.open(job.ApplicationURL, '_blank', 'noopener,noreferrer');
+    try {
+      setTrackingApply(true);
+      await onTrackApplyClick(job._id);
+    } finally {
+      setTrackingApply(false);
+    }
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ position: 'relative', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface-2)', padding: 16 }}>
-        <span style={{ position: 'absolute', right: 14, top: 14, fontSize: '0.74rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-          {job.ATSPlatform || 'unknown'}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface-2)', padding: 16, position: 'relative' }}>
+        <span style={{ position: 'absolute', right: 14, top: 14, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          Posted: {formatPostedDate(job.PostedDate)}
         </span>
-
         <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.2rem,2.6vw,1.55rem)', color: 'var(--text-primary)', marginBottom: 10, paddingRight: 80 }}>
           {job.JobTitle}
         </h2>
 
-        <div className="flex items-center flex-wrap gap-2" style={{ marginBottom: 8 }}>
+        <div className="flex items-center flex-wrap gap-2" style={{ marginBottom: 10 }}>
           <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>{job.Company}</span>
           <span style={{ color: 'var(--text-muted)' }}>•</span>
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <MapPin size={12} /> {primaryLocation}
           </span>
-          {isMeaningful(job.WorkplaceType) && job.WorkplaceType !== 'Unspecified' && <Badge variant="blue" style={{ fontSize: '0.7rem' }}>{job.WorkplaceType}</Badge>}
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Posted: {formatPostedDate(job.PostedDate)}</span>
+          {showWorkplaceBadge && <Badge variant="blue" style={{ fontSize: '0.7rem' }}>{normalizedWorkplace}</Badge>}
         </div>
 
         <div className="flex flex-wrap gap-2" style={{ marginBottom: 10 }}>
-          {isCleanDepartment(job.Department) && <Badge variant="neutral">{job.Department}</Badge>}
           {(job.Domain === 'Technical' || job.Domain === 'Non-Technical') && <Badge variant={job.Domain === 'Technical' ? 'green' : 'neutral'}>{job.Domain}</Badge>}
           {isMeaningful(job.ExperienceLevel) && job.ExperienceLevel !== 'N/A' && <Badge variant="neutral">{job.ExperienceLevel}</Badge>}
           {isMeaningful(job.EmploymentType) && <Badge variant="neutral">{job.EmploymentType}</Badge>}
@@ -778,51 +891,15 @@ function PublicJobDetail({ job, onVote }: { job: IJob; onVote: (jobId: string, s
 
         <div className="flex items-center justify-between flex-wrap gap-2" style={{ marginTop: 10 }}>
           <div className="flex items-center gap-2 flex-wrap">
-            <a href={job.ApplicationURL} target="_blank" rel="noopener noreferrer">
-              <Button size="sm">
+            <Button size="sm" onClick={handleApplyNow} loading={trackingApply}>
                 Apply Now <ExternalLink size={12} />
-              </Button>
-            </a>
+            </Button>
             {job.GermanRequired === false && <Badge variant="acid">🇬🇧 English Only</Badge>}
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onVote(job._id, 'up')}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: job.userVote === 'up' ? 'var(--success-dim)' : 'transparent',
-                color: job.userVote === 'up' ? 'var(--success)' : 'var(--text-muted)',
-                display: 'grid',
-                placeItems: 'center',
-              }}
-            >
-              <ThumbsUp size={14} />
-            </button>
-
-            <button
-              onClick={() => onVote(job._id, 'down')}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: job.userVote === 'down' ? 'var(--danger-dim)' : 'transparent',
-                color: job.userVote === 'down' ? 'var(--danger)' : 'var(--text-muted)',
-                display: 'grid',
-                placeItems: 'center',
-              }}
-            >
-              <ThumbsDown size={14} />
-            </button>
-
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              👍 {job.thumbsUp || 0} · 👎 {job.thumbsDown || 0}
-            </span>
-          </div>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {job.applyClicks || 0} apply clicks
+          </span>
         </div>
       </div>
 
@@ -830,13 +907,6 @@ function PublicJobDetail({ job, onVote }: { job: IJob; onVote: (jobId: string, s
         <FormattedDescription description={job.Description || ''} />
       </div>
 
-      <div className="flex justify-start">
-        <a href={job.ApplicationURL} target="_blank" rel="noopener noreferrer">
-          <Button>
-            Apply Now <ExternalLink size={13} />
-          </Button>
-        </a>
-      </div>
     </div>
   );
 }

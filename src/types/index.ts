@@ -31,9 +31,7 @@ export interface IJob {
   sourceSite?: string;
   Status?: 'pending_review' | 'active' | 'rejected';
   ConfidenceScore: number;
-  thumbsUp: number;
-  thumbsDown: number;
-  userVote?: 'up' | 'down' | null;
+  applyClicks: number;
   scrapedAt?: string;
 }
 

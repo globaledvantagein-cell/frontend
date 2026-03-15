@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LogOut, User, ShieldCheck, Menu, X, Sun, Moon, Zap } from 'lucide-react';
+import { LogOut, User, Menu, X, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeProvider';
-import { BRAND } from '../theme/brand';
 import Footer from './Footer';
+import FeedbackWidget from './FeedbackWidget';
 import { Button, Badge } from './ui';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
@@ -14,11 +14,13 @@ export default function Layout() {
   const { mode, toggle } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerClosing, setDrawerClosing] = useState(false);
+  const [unreadFeedback, setUnreadFeedback] = useState(0);
   const isMobileNav = useMediaQuery('(max-width: 767px)');
 
   const isDesktopSize = useMediaQuery('(min-width: 768px)');
   const isSplitRoute = loc.pathname === '/jobs' || loc.pathname === '/review';
   const isDesktopSplitRoute = isDesktopSize && isSplitRoute;
+  const hideFeedbackWidget = isAdmin || loc.pathname.startsWith('/admin');
 
   const drawerRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +42,17 @@ export default function Layout() {
     }
     return () => { document.body.style.overflow = ''; };
   }, [drawerOpen]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    fetch('/api/feedback/stats', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    })
+      .then(response => response.json())
+      .then(data => setUnreadFeedback(data?.unread || 0))
+      .catch(() => {});
+  }, [isAdmin, loc.pathname]);
 
   function closeDrawer() {
     if (!drawerOpen) return;
@@ -69,18 +82,30 @@ export default function Layout() {
   });
 
   const NavLink = ({ path, label }: { path: string; label: string }) => (
-    <Link
-      to={path}
-      onClick={closeDrawer}
-      style={navLinkStyle(path)}
-      onMouseEnter={e => { if (!active(path)) (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; }}
-      onMouseLeave={e => { if (!active(path)) (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; }}
-    >
-      {label}
-      {active(path) && (
-        <span style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, background: 'var(--acid)', borderRadius: 2 }} />
+    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'flex-start' }}>
+      <Link
+        to={path}
+        onClick={closeDrawer}
+        style={navLinkStyle(path)}
+        onMouseEnter={e => { if (!active(path)) (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; }}
+        onMouseLeave={e => { if (!active(path)) (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; }}
+      >
+        {label}
+        {active(path) && (
+          <span style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, background: 'var(--acid)', borderRadius: 2 }} />
+        )}
+      </Link>
+      {path === '/feedback' && unreadFeedback > 0 && (
+        <span style={{
+          background: 'var(--danger)', color: '#fff',
+          fontSize: '0.6rem', fontWeight: 700,
+          padding: '1px 5px', borderRadius: 8,
+          marginLeft: -4, position: 'relative', top: -8,
+        }}>
+          {unreadFeedback}
+        </span>
       )}
-    </Link>
+    </div>
   );
 
   const DrawerNavLink = ({ path, label }: { path: string; label: string }) => (
@@ -111,6 +136,7 @@ export default function Layout() {
     ['/admin/companies', 'Directory'],
     ['/add', 'Add Job'],
     ['/rejected', 'Trash'],
+    ['/feedback', 'Feedback'],
   ];
   const publicLinks: [string, string][] = [
     ['/directory', 'Companies'],
@@ -148,21 +174,24 @@ export default function Layout() {
           <Link
             to={isAdmin ? '/dashboard' : '/'}
             style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', flexShrink: 0 }}
-            aria-label={`${BRAND.appName} home`}
+            aria-label="English Jobs in Germany home"
           >
-            <div
-              style={{
-                width: 30, height: 30, borderRadius: 8,
-                background: isAdmin ? 'var(--danger-dim)' : 'var(--acid-dim)',
-                border: `1px solid ${isAdmin ? 'var(--danger)' : 'var(--acid-mid)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              {isAdmin ? <ShieldCheck size={14} color="var(--danger)" /> : <Zap size={14} color="var(--acid)" />}
+            <img
+              src="/logo.jpeg"
+              alt="English Jobs in Germany"
+              style={{ height: isMobileNav ? 28 : 32, width: 'auto', display: 'block', flexShrink: 0 }}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', lineHeight: 1, flexShrink: 0 }}>
+              <span style={{ fontFamily: "'Playfair Display',serif", fontSize: isMobileNav ? '0.95rem' : '1.1rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+                English <span style={{ color: 'var(--primary)' }}>Jobs</span>
+              </span>
+              {!isMobileNav && (
+                <span style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: 2 }}>in Germany</span>
+              )}
+              {isAdmin && (
+                <span style={{ fontSize: '0.58rem', fontWeight: 700, background: 'var(--danger-soft)', color: 'var(--danger)', borderRadius: 4, padding: '1px 5px', letterSpacing: '0.05em', alignSelf: 'flex-start', marginTop: 2 }}>ADMIN</span>
+              )}
             </div>
-            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-              {BRAND.appName.replace('Jobs', '')}<span style={{ color: 'var(--acid)' }}>Jobs</span>
-            </span>
           </Link>
 
           {/* Desktop nav links */}
@@ -255,9 +284,12 @@ export default function Layout() {
           >
             {/* Drawer header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-              <span style={{ fontFamily: "'Playfair Display',serif", fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {BRAND.appName.replace('Jobs', '')}<span style={{ color: 'var(--acid)' }}>Jobs</span>
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img src="/logo.jpeg" alt="English Jobs in Germany" style={{ height: 26, width: 'auto', display: 'block' }} />
+                <span style={{ fontFamily: "'Playfair Display',serif", fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  English <span style={{ color: 'var(--primary)' }}>Jobs</span>
+                </span>
+              </div>
               <button
                 onClick={closeDrawer}
                 aria-label="Close navigation menu"
@@ -310,6 +342,7 @@ export default function Layout() {
         <Outlet />
       </main>
       {!isDesktopSplitRoute && <Footer />}
+      {!hideFeedbackWidget && <FeedbackWidget />}
     </div>
   );
 }

@@ -6,6 +6,8 @@ import { Container, PageHeader, Button, StatCard } from '../components/ui';
 
 interface DailyStats { connectedSources: number; jobsScraped: number; jobsSentToAI: number; jobsPendingReview: number; jobsPublished: number; }
 interface CleanSummary { total: number; cleaned: number; alreadyClean: number; }
+interface BackfillSummary { total: number; updated: number; logsTotal: number; logsUpdated: number; message: string; }
+interface SalaryFixSummary { total: number; fixed: number; }
 
 export default function AdminDashboard() {
   const { token } = useAuth();
@@ -13,6 +15,10 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [cleaning, setCleaning] = useState(false);
   const [cleanSummary, setCleanSummary] = useState<CleanSummary | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillSummary, setBackfillSummary] = useState<BackfillSummary | null>(null);
+  const [fixingSalaries, setFixingSalaries] = useState(false);
+  const [salaryFixSummary, setSalaryFixSummary] = useState<SalaryFixSummary | null>(null);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -51,6 +57,60 @@ export default function AdminDashboard() {
     }
   };
 
+  const backfillExperience = async () => {
+    if (!window.confirm('This will backfill experience levels and workplace type for existing jobs and test logs. Continue?')) {
+      return;
+    }
+
+    setBackfilling(true);
+    setBackfillSummary(null);
+
+    try {
+      const response = await fetch('/api/jobs/admin/backfill-experience', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to backfill experience levels');
+      }
+
+      setBackfillSummary(payload);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
+  const fixSalaries = async () => {
+    if (!window.confirm('This will normalize suspiciously low salary values (e.g. 125 -> 125000). Continue?')) {
+      return;
+    }
+
+    setFixingSalaries(true);
+    setSalaryFixSummary(null);
+
+    try {
+      const response = await fetch('/api/jobs/admin/fix-salaries', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to fix salaries');
+      }
+
+      setSalaryFixSummary(payload);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setFixingSalaries(false);
+    }
+  };
+
   const STATS = [
     { icon: <Server size={18} />, value: stats?.connectedSources ?? 0, label: 'Career Pages', accent: false },
     { icon: <Database size={18} />, value: stats?.jobsScraped ?? 0, label: 'Raw Data (24h)', accent: false },
@@ -69,12 +129,24 @@ export default function AdminDashboard() {
               <div style={{ display: 'flex', gap: 10 }}>
                 <Button variant="ghost" size="sm" onClick={fetchStats} loading={loading}><RefreshCw size={13} />Refresh</Button>
                 <Button variant="ghost" size="sm" onClick={cleanDescriptions} loading={cleaning}>Clean All Descriptions</Button>
+                <Button variant="ghost" size="sm" onClick={backfillExperience} loading={backfilling}>Backfill Experience Levels</Button>
+                <Button variant="ghost" size="sm" onClick={fixSalaries} loading={fixingSalaries}>Fix Salaries</Button>
                 <Link to="/review"><Button size="sm">Review Queue <ArrowRight size={13} /></Button></Link>
               </div>
             } />
         </Container>
       </div>
       <Container style={{ padding: '32px 24px' }}>
+        {salaryFixSummary && (
+          <div style={{ marginBottom: 14, padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface-solid)', color: 'var(--muted-ink)', fontSize: '0.86rem' }}>
+            Salary normalization complete · Checked: {salaryFixSummary.total} · Fixed: {salaryFixSummary.fixed}
+          </div>
+        )}
+        {backfillSummary && (
+          <div style={{ marginBottom: 14, padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface-solid)', color: 'var(--muted-ink)', fontSize: '0.86rem' }}>
+            {backfillSummary.message} · Jobs: {backfillSummary.updated}/{backfillSummary.total} · Test logs: {backfillSummary.logsUpdated}/{backfillSummary.logsTotal}
+          </div>
+        )}
         {cleanSummary && (
           <div style={{ marginBottom: 14, padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface-solid)', color: 'var(--muted-ink)', fontSize: '0.86rem' }}>
             Description cleaning complete · Total: {cleanSummary.total} · Cleaned: {cleanSummary.cleaned} · Already clean: {cleanSummary.alreadyClean}

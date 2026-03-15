@@ -1,46 +1,7 @@
 import { useState } from 'react';
-import { MapPin, Building2, ExternalLink, Check, X, Undo, ThumbsUp, ThumbsDown, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { MapPin, Building2, ExternalLink, Check, X, Undo, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import type { IJob } from '../types';
 import { Badge, Button } from './ui';
-
-let inMemoryVisitorId: string | null = null;
-
-function readCookie(name: string) {
-  const cookieName = `${name}=`;
-  const cookies = document.cookie.split(';');
-  for (const cookie of cookies) {
-    const trimmed = cookie.trim();
-    if (trimmed.startsWith(cookieName)) {
-      return decodeURIComponent(trimmed.substring(cookieName.length));
-    }
-  }
-  return null;
-}
-
-function setCookie(name: string, value: string, days = 365) {
-  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
-}
-
-function generateVisitorId() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-export function getVisitorId() {
-  if (inMemoryVisitorId) return inMemoryVisitorId;
-  const fromCookie = readCookie('visitorId');
-  if (fromCookie) {
-    inMemoryVisitorId = fromCookie;
-    return fromCookie;
-  }
-  const generated = generateVisitorId();
-  inMemoryVisitorId = generated;
-  setCookie('visitorId', generated);
-  return generated;
-}
 
 interface Props {
   job: IJob;
@@ -48,10 +9,9 @@ interface Props {
   isRejectedView?: boolean;
   onDecision?: (id: string, d: 'accept' | 'reject') => void;
   onRestore?: (id: string) => void;
-  onFeedback?: (id: string, s: 'up' | 'down', visitorId: string) => void;
 }
 
-export default function JobCard({ job, isReviewMode, isRejectedView, onDecision, onRestore, onFeedback }: Props) {
+export default function JobCard({ job, isReviewMode, isRejectedView, onDecision, onRestore }: Props) {
   const [imgErr, setImgErr] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -359,42 +319,9 @@ export default function JobCard({ job, isReviewMode, isRejectedView, onDecision,
                 Apply Now <ExternalLink size={11} />
               </Button>
             </a>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {(['down', 'up'] as const).map(s => (
-                <button
-                  key={s}
-                  onClick={() => onFeedback && onFeedback(job._id, s, getVisitorId())}
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 7,
-                    border: '1px solid var(--border)',
-                    background:
-                      job.userVote === s
-                        ? s === 'up'
-                          ? 'var(--success-dim)'
-                          : 'var(--danger-dim)'
-                        : 'transparent',
-                    color:
-                      job.userVote === s
-                        ? s === 'up'
-                          ? 'var(--success)'
-                          : 'var(--danger)'
-                        : 'var(--text-muted)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.18s',
-                  }}
-                >
-                  {s === 'up' ? <ThumbsUp size={13} /> : <ThumbsDown size={13} />}
-                </button>
-              ))}
-              <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', alignSelf: 'center', marginLeft: 6 }}>
-                👍 {job.thumbsUp || 0} · 👎 {job.thumbsDown || 0}
-              </span>
-            </div>
+            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', alignSelf: 'center', marginLeft: 6 }}>
+              {job.applyClicks || 0} apply clicks
+            </span>
           </div>
         )}
       </div>
