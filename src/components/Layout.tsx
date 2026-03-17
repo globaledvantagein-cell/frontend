@@ -17,8 +17,6 @@ export default function Layout() {
   const [unreadFeedback, setUnreadFeedback] = useState(0);
   const isMobileNav = useMediaQuery('(max-width: 767px)');
 
-  const isDesktopSize = useMediaQuery('(min-width: 768px)');
-  const isSplitRoute = loc.pathname === '/jobs' || loc.pathname === '/review';
   const hideFeedbackWidget = isAdmin || loc.pathname.startsWith('/admin');
 
   const drawerRef = useRef<HTMLDivElement>(null);
