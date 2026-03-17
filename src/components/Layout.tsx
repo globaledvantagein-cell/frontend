@@ -19,7 +19,6 @@ export default function Layout() {
 
   const isDesktopSize = useMediaQuery('(min-width: 768px)');
   const isSplitRoute = loc.pathname === '/jobs' || loc.pathname === '/review';
-  const isDesktopSplitRoute = isDesktopSize && isSplitRoute;
   const hideFeedbackWidget = isAdmin || loc.pathname.startsWith('/admin');
 
   const drawerRef = useRef<HTMLDivElement>(null);
