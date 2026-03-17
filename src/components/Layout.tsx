@@ -29,10 +29,6 @@ export default function Layout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loc.pathname, isMobileNav]);
 
-  useEffect(() => {
-    document.body.classList.toggle('jobs-split-locked', isDesktopSplitRoute);
-    return () => { document.body.classList.remove('jobs-split-locked'); };
-  }, [isDesktopSplitRoute]);
 
   useEffect(() => {
     if (drawerOpen) {
@@ -148,10 +144,8 @@ export default function Layout() {
     <div
       style={{
         minHeight: '100vh',
-        height: isDesktopSplitRoute ? '100vh' : undefined,
         display: 'flex',
         flexDirection: 'column',
-        overflow: isDesktopSplitRoute ? 'hidden' : undefined,
       }}
     >
       <nav
@@ -336,12 +330,12 @@ export default function Layout() {
       )}
 
       <main
-        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: isDesktopSplitRoute ? 'hidden' : undefined }}
+        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
         role="main"
       >
         <Outlet />
       </main>
-      {!isDesktopSplitRoute && <Footer />}
+        <Footer />
       {!hideFeedbackWidget && <FeedbackWidget />}
     </div>
   );

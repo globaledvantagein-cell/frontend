@@ -530,28 +530,29 @@ export default function Dashboard() {
   );
 
   return (
-    <div style={{ background: 'var(--bg-base)', minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ background: 'var(--bg-base)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <div ref={heroRef} style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)', padding: '24px 0', flexShrink: 0 }}>
         <Container>
-          <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>
+            <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, textAlign: 'center' }}>
             {BRAND.appName}
-          </p>
-          <h1 style={{ fontSize: 'clamp(1.45rem, 3.8vw, 2rem)', fontFamily: "'Playfair Display',serif", color: 'var(--text-primary)' }}>
+            </p>
+            <h1 style={{ fontSize: 'clamp(1.45rem, 3.8vw, 2rem)', fontFamily: "'Playfair Display',serif", color: 'var(--text-primary)', textAlign: 'center' }}>
             Browse English-Speaking Roles
-          </h1>
-          <p
-            key={filteredJobs.length}
-            style={{
-              fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: 6,
-              animation: 'fadeIn 0.3s ease both',
-            }}
-          >
-            {filteredJobs.length} of {jobs.length} roles available
-          </p>
+            </h1>
+            <p
+              key={filteredJobs.length}
+              style={{
+                fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: 6,
+                animation: 'fadeIn 0.3s ease both',
+                textAlign: 'center',
+              }}
+            >
+              {filteredJobs.length} of {jobs.length} roles available
+            </p>
         </Container>
       </div>
 
-      <Container style={{ padding: '20px 24px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Container style={{ padding: '20px 24px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <div ref={filtersRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 14, flexShrink: 0 }}>
           {/* Mobile filter bar: search + filter pill button */}
           <div className="filter-bar-mobile">
