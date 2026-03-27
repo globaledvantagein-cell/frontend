@@ -5,7 +5,6 @@ import { AlertCircle, CheckCircle2, ExternalLink, MapPin, RefreshCw, ShieldCheck
 import type { IJob } from '../types';
 import FormattedDescription from '../components/FormattedDescription';
 import { Badge, Button, Container, EmptyState, PageHeader } from '../components/ui';
-import { BRAND } from '../theme/brand';
 
 function toDate(value?: string | null) {
   if (!value) return null;
@@ -98,6 +97,7 @@ function compactDomain(value?: string) {
 
 export default function ReviewQueue() {
   const [jobs, setJobs] = useState<IJob[]>([]);
+  const [totalJobs, setTotalJobs] = useState(0);
   const [loading, setLoading] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
@@ -118,7 +118,7 @@ export default function ReviewQueue() {
   const isMobile = useMediaQuery('(max-width: 767px)');
 
   useEffect(() => { fetchQueue(); }, []);
-  useEffect(() => { document.title = `${BRAND.appName} Review Queue`; }, []);
+
 
   const fetchQueue = async () => {
     setLoading(true);
@@ -128,6 +128,7 @@ export default function ReviewQueue() {
       const payload = await response.json();
       const nextJobs = Array.isArray(payload?.jobs) ? payload.jobs : [];
       setJobs(nextJobs);
+      setTotalJobs(payload?.totalJobs || nextJobs.length);
     } catch (error) {
       console.error('Failed to load queue', error);
     } finally {
@@ -137,6 +138,7 @@ export default function ReviewQueue() {
 
   const handleDecision = async (id: string, decision: 'accept' | 'reject') => {
     setJobs(previous => previous.filter(job => job._id !== id));
+    setTotalJobs(prev => Math.max(0, prev - 1));
     if (selectedJobId === id) {
       setSelectedJobId(null);
       setMobileDetailOpen(false);
@@ -228,7 +230,7 @@ export default function ReviewQueue() {
           <PageHeader
             label="Admin"
             title={<span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><ShieldCheck size={22} color="var(--primary)" />Review Queue</span>}
-            subtitle={reanalyzingAll ? 'Re-analyzing all eligible jobs... this can take a while.' : `${jobs.length} jobs pending review`}
+            subtitle={reanalyzingAll ? 'Re-analyzing all eligible jobs... this can take a while.' : `${totalJobs} jobs pending review (showing ${jobs.length})`}
             actions={
               <div style={{ display: 'flex', gap: 8 }}>
                 <Button variant="ghost" size="sm" onClick={fetchQueue} loading={loading || reanalyzingAll}><RefreshCw size={13} />Refresh</Button>
