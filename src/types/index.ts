@@ -33,6 +33,7 @@ export interface IJob {
   ConfidenceScore: number;
   applyClicks: number;
   scrapedAt?: string;
+  RejectionReason?: string;
 }
 
 export interface ICompany {
