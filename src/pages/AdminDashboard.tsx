@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Server, Database, Cpu, ClipboardList, CheckCircle, RefreshCw, ArrowRight } from 'lucide-react';
+import { ClipboardList, RefreshCw, ArrowRight, FlaskConical, Globe, Trash2 } from 'lucide-react';
 import { Container, PageHeader, Button, StatCard } from '../components/ui';
 
-interface DailyStats { connectedSources: number; jobsScraped: number; jobsSentToAI: number; jobsPendingReview: number; jobsPublished: number; }
 interface CleanSummary { total: number; cleaned: number; alreadyClean: number; }
 interface BackfillSummary { total: number; updated: number; logsTotal: number; logsUpdated: number; message: string; }
 interface SalaryFixSummary { total: number; fixed: number; }
+interface DbCounts { testLogs: number; pendingReview: number; activeJobs: number; rejectedJobs: number; }
 
 export default function AdminDashboard() {
   const { token } = useAuth();
-  const [stats, setStats] = useState<DailyStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState<DbCounts | null>(null);
+  const [countsLoading, setCountsLoading] = useState(true);
   const [cleaning, setCleaning] = useState(false);
   const [cleanSummary, setCleanSummary] = useState<CleanSummary | null>(null);
   const [backfilling, setBackfilling] = useState(false);
@@ -20,35 +20,27 @@ export default function AdminDashboard() {
   const [fixingSalaries, setFixingSalaries] = useState(false);
   const [salaryFixSummary, setSalaryFixSummary] = useState<SalaryFixSummary | null>(null);
 
-  const fetchStats = async () => {
-    setLoading(true);
+  const fetchCounts = async () => {
+    setCountsLoading(true);
     try {
-      const r = await fetch('/api/analytics/daily', { headers: { 'Authorization': `Bearer ${token}` } });
-      const d = await r.json(); setStats(d);
-    } catch (e) { console.error('Failed to fetch analytics:', e); } finally { setLoading(false); }
+      const r = await fetch('/api/analytics/counts');
+      if (r.ok) setCounts(await r.json());
+    } catch (e) { console.error('Failed to fetch DB counts:', e); } finally { setCountsLoading(false); }
   };
 
-  useEffect(() => { fetchStats(); }, [token]);
+  useEffect(() => { fetchCounts(); }, [token]);
 
   const cleanDescriptions = async () => {
-    if (!window.confirm('This will strip any remaining HTML from all job descriptions. Continue?')) {
-      return;
-    }
-
+    if (!window.confirm('This will strip any remaining HTML from all job descriptions. Continue?')) return;
     setCleaning(true);
     setCleanSummary(null);
-
     try {
       const response = await fetch('/api/jobs/admin/clean-descriptions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to clean descriptions');
-      }
-
+      if (!response.ok) throw new Error(payload?.error || 'Failed to clean descriptions');
       setCleanSummary(payload);
     } catch (error) {
       console.error(error);
@@ -58,24 +50,16 @@ export default function AdminDashboard() {
   };
 
   const backfillExperience = async () => {
-    if (!window.confirm('This will backfill experience levels and workplace type for existing jobs and test logs. Continue?')) {
-      return;
-    }
-
+    if (!window.confirm('This will backfill experience levels and workplace type for existing jobs and test logs. Continue?')) return;
     setBackfilling(true);
     setBackfillSummary(null);
-
     try {
       const response = await fetch('/api/jobs/admin/backfill-experience', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to backfill experience levels');
-      }
-
+      if (!response.ok) throw new Error(payload?.error || 'Failed to backfill experience levels');
       setBackfillSummary(payload);
     } catch (error) {
       console.error(error);
@@ -85,24 +69,16 @@ export default function AdminDashboard() {
   };
 
   const fixSalaries = async () => {
-    if (!window.confirm('This will normalize suspiciously low salary values (e.g. 125 -> 125000). Continue?')) {
-      return;
-    }
-
+    if (!window.confirm('This will normalize suspiciously low salary values (e.g. 125 -> 125000). Continue?')) return;
     setFixingSalaries(true);
     setSalaryFixSummary(null);
-
     try {
       const response = await fetch('/api/jobs/admin/fix-salaries', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to fix salaries');
-      }
-
+      if (!response.ok) throw new Error(payload?.error || 'Failed to fix salaries');
       setSalaryFixSummary(payload);
     } catch (error) {
       console.error(error);
@@ -111,12 +87,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const STATS = [
-    { icon: <Server size={18} />, value: stats?.connectedSources ?? 0, label: 'Career Pages', accent: false },
-    { icon: <Database size={18} />, value: stats?.jobsScraped ?? 0, label: 'Raw Data (24h)', accent: false },
-    { icon: <Cpu size={18} />, value: stats?.jobsSentToAI ?? 0, label: 'AI Processed', accent: false },
-    { icon: <ClipboardList size={18} />, value: stats?.jobsPendingReview ?? 0, label: 'Needs Review', accent: true },
-    { icon: <CheckCircle size={18} />, value: stats?.jobsPublished ?? 0, label: 'Live Jobs', accent: false },
+  const DB_COUNTS = [
+    { icon: <FlaskConical size={18} />, value: counts?.testLogs ?? '–', label: 'Test Logs', accent: false },
+    { icon: <ClipboardList size={18} />, value: counts?.pendingReview ?? '–', label: 'Review Queue', accent: counts !== null && (counts.pendingReview > 0) },
+    { icon: <Globe size={18} />, value: counts?.activeJobs ?? '–', label: 'Live Jobs', accent: false },
+    { icon: <Trash2 size={18} />, value: counts?.rejectedJobs ?? '–', label: 'Trash', accent: false },
   ];
 
   return (
@@ -127,7 +102,7 @@ export default function AdminDashboard() {
             subtitle={`Metrics for ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`}
             actions={
               <div style={{ display: 'flex', gap: 10 }}>
-                <Button variant="ghost" size="sm" onClick={fetchStats} loading={loading}><RefreshCw size={13} />Refresh</Button>
+                <Button variant="ghost" size="sm" onClick={fetchCounts} loading={countsLoading}><RefreshCw size={13} />Refresh</Button>
                 <Button variant="ghost" size="sm" onClick={cleanDescriptions} loading={cleaning}>Clean All Descriptions</Button>
                 <Button variant="ghost" size="sm" onClick={backfillExperience} loading={backfilling}>Backfill Experience Levels</Button>
                 <Button variant="ghost" size="sm" onClick={fixSalaries} loading={fixingSalaries}>Fix Salaries</Button>
@@ -152,10 +127,10 @@ export default function AdminDashboard() {
             Description cleaning complete · Total: {cleanSummary.total} · Cleaned: {cleanSummary.cleaned} · Already clean: {cleanSummary.alreadyClean}
           </div>
         )}
-        {loading
-          ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 14 }}>{[1, 2, 3, 4, 5].map(i => <div key={i} className="skeleton" style={{ height: 140 }} />)}</div>
+        {countsLoading
+          ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 14 }}>{[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 140 }} />)}</div>
           : <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 14 }}>
-            {STATS.map(s => <StatCard key={s.label} icon={s.icon} value={s.value} label={s.label} accent={s.accent} />)}
+            {DB_COUNTS.map(s => <StatCard key={s.label} icon={s.icon} value={s.value} label={s.label} accent={s.accent} />)}
           </div>}
         <div style={{ marginTop: 24, padding: '24px', background: 'var(--surface-solid)', border: '1.25px solid var(--border)', borderRadius: 14 }}>
           <p className="font-sketch" style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: 10 }}>System Status</p>

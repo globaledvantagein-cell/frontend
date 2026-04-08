@@ -1,24 +1,33 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import type { IJob } from '../types';
-import { Trash2, RefreshCw, Download, ArrowLeft, ExternalLink, MapPin } from 'lucide-react';
+import { Trash2, RefreshCw, Download, ExternalLink, MapPin } from 'lucide-react';
 import { Container, PageHeader, Button, EmptyState, Badge } from '../components/ui';
 import { CONTENT } from '../theme/content';
 import FormattedDescription from '../components/FormattedDescription';
-import { useMediaQuery } from '../hooks/useMediaQuery';
+import MobileDetailOverlay from '../components/MobileDetailOverlay';
 import { formatPostedDate, relativeDate } from '../utils/date';
 import { parseAllLocations, getPrimaryLocation, isMeaningful, normalizeWorkplace } from '../utils/job';
+import { useSplitView } from '../hooks/useSplitView';
 
 export default function RejectedJobs() {
   const [jobs, setJobs] = useState<IJob[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
-  const [splitHeight, setSplitHeight] = useState<number | null>(null);
 
-  const isMobile = useMediaQuery('(max-width: 768px)');
-  const splitViewRef = useRef<HTMLDivElement | null>(null);
-  const desktopJobRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
-  const savedScrollRef = useRef(0);
+  const {
+    selectedItem: selectedJob,
+    selectedId: selectedJobId,
+    setSelectedId: setSelectedJobId,
+    mobileDetailOpen,
+    openMobileDetail,
+    closeMobileDetail,
+    splitViewRef,
+    itemRefs: desktopJobRefs,
+    desktopSplitHeight,
+    isMobile,
+  } = useSplitView(jobs, {
+    recalcDeps: [loading],
+    bottomPadding: 32,
+  });
 
   useEffect(() => { fetchRejected(); }, []);
 
@@ -30,59 +39,12 @@ export default function RejectedJobs() {
       const d = await r.json(); 
       const fetchedJobs = Array.isArray(d) ? d : [];
       setJobs(fetchedJobs);
-      if (fetchedJobs.length > 0 && !selectedJobId) {
-        setSelectedJobId(fetchedJobs[0]._id);
-      }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
-  const selectedJob = useMemo(() => {
-    if (!selectedJobId) return null;
-    return jobs.find(job => job._id === selectedJobId) || null;
-  }, [jobs, selectedJobId]);
-
-  useEffect(() => {
-    if (jobs.length > 0 && (!selectedJobId || !jobs.find(j => j._id === selectedJobId))) {
-      setSelectedJobId(jobs[0]._id);
-      if (isMobile) setMobileDetailOpen(false);
-    }
-  }, [jobs, selectedJobId, isMobile]);
-
-  useEffect(() => {
-    if (!selectedJobId || isMobile) return;
-    const node = desktopJobRefs.current[selectedJobId];
-    if (!node) return;
-    requestAnimationFrame(() => {
-      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
-  }, [selectedJobId, isMobile, jobs.length]);
-
-  useEffect(() => {
-    const updateSplitHeight = () => {
-      if (window.innerWidth < 768 || !splitViewRef.current) {
-        setSplitHeight(null);
-        return;
-      }
-      const top = splitViewRef.current.getBoundingClientRect().top;
-      const nextHeight = Math.max(window.innerHeight - top - 32, 320); 
-      setSplitHeight(nextHeight);
-    };
-
-    const observer = new ResizeObserver(() => updateSplitHeight());
-    if (splitViewRef.current) observer.observe(splitViewRef.current);
-    window.addEventListener('resize', updateSplitHeight);
-    updateSplitHeight();
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', updateSplitHeight);
-    };
-  }, [loading, jobs.length]);
-
   const handleRestore = async (id: string) => {
     setJobs(p => p.filter(j => j._id !== id));
-    if (selectedJobId === id) setSelectedJobId(null);
-    if (isMobile && mobileDetailOpen) setMobileDetailOpen(false);
+    if (selectedJobId === id) setSelectedJobId(jobs[0]?._id ?? '');
     const token = localStorage.getItem('token');
     await fetch(`/api/jobs/admin/restore/${id}`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` } });
   };
@@ -90,10 +52,7 @@ export default function RejectedJobs() {
   const handleExportCSV = () => {
     if (jobs.length === 0) return;
     
-    // Create CSV header
-    const headers = ['JobID', 'JobTitle', , 'Company','Description'];
-    
-    // Create CSV rows
+    const headers = ['JobID', 'JobTitle', 'Company', 'Description'];
     const rows = jobs.map(job => {
       return [
         `"${job.JobID || job._id}"`,
@@ -114,8 +73,6 @@ export default function RejectedJobs() {
     link.click();
     document.body.removeChild(link);
   };
-
-  const desktopSplitHeight = splitHeight ? `${splitHeight}px` : undefined;
 
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -148,14 +105,11 @@ export default function RejectedJobs() {
           <EmptyState icon={<Trash2 size={32} />} title={CONTENT.admin.rejectedJobs.empty.title} body={CONTENT.admin.rejectedJobs.empty.body} />
         ) : (
           <>
-            {/* Desktop/Tablet split view */}
+            {/* Desktop split view */}
             <div
               ref={splitViewRef}
-              className="split-grid hidden md:grid"
               style={{
-                gap: 14,
-                flex: 1,
-                minHeight: 0,
+                gap: 14, flex: 1, minHeight: 0,
                 height: desktopSplitHeight,
                 display: isMobile ? 'none' : 'grid',
                 gridTemplateColumns: 'minmax(320px, 350px) minmax(400px, 1fr)'
@@ -165,8 +119,8 @@ export default function RejectedJobs() {
                 <div className="flex flex-col" style={{ gap: 8, padding: 12 }}>
                   {jobs.map(job => {
                     const selected = selectedJobId === job._id;
-                    const normalizedWorkplace = normalizeWorkplace(job.WorkplaceType);
-                    const showWorkplaceBadge = normalizedWorkplace === 'Remote' || normalizedWorkplace === 'Hybrid';
+                    const wp = normalizeWorkplace(job.WorkplaceType);
+                    const showWp = wp === 'Remote' || wp === 'Hybrid';
 
                     return (
                       <button
@@ -176,11 +130,7 @@ export default function RejectedJobs() {
                         style={{
                           border: selected ? '1px solid var(--danger)' : '1px solid var(--border)',
                           background: selected ? 'var(--danger-soft, rgba(239, 68, 68, 0.05))' : 'var(--bg-surface-2)',
-                          borderRadius: 10,
-                          padding: 12,
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          width: '100%',
+                          borderRadius: 10, padding: 12, textAlign: 'left', cursor: 'pointer', width: '100%',
                         }}
                       >
                         <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.35, whiteSpace: 'normal', wordBreak: 'break-word' }}>
@@ -189,9 +139,8 @@ export default function RejectedJobs() {
                         <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {job.Company} | {getPrimaryLocation(job, parseAllLocations(job))}
                         </p>
-
                         <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
-                          {showWorkplaceBadge && <Badge variant="blue" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{normalizedWorkplace}</Badge>}
+                          {showWp && <Badge variant="blue" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{wp}</Badge>}
                           {job.RejectionReason && <Badge variant="neutral" style={{ fontSize: '0.68rem', padding: '2px 8px', color: 'var(--danger)', borderColor: 'var(--danger)' }}>{job.RejectionReason}</Badge>}
                         </div>
                       </button>
@@ -207,16 +156,12 @@ export default function RejectedJobs() {
               </section>
             </div>
 
-            {/* Mobile-only job list */}
-            <div className="flex flex-col gap-2 md:hidden" style={{ display: isMobile ? 'flex' : 'none' }}>
+            {/* Mobile list */}
+            <div style={{ display: isMobile ? 'flex' : 'none', flexDirection: 'column', gap: 8 }}>
               {jobs.map(job => (
                 <button
                   key={job._id}
-                  onClick={() => {
-                    setSelectedJobId(job._id);
-                    savedScrollRef.current = window.scrollY;
-                    setMobileDetailOpen(true);
-                  }}
+                  onClick={() => openMobileDetail(job._id)}
                   style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-surface)', padding: '14px 12px', textAlign: 'left', width: '100%' }}
                 >
                   <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3 }}>{job.JobTitle}</p>
@@ -227,24 +172,11 @@ export default function RejectedJobs() {
               ))}
             </div>
 
-            {/* Mobile detail overlay */}
+            {/* Mobile overlay */}
             {mobileDetailOpen && selectedJob && (
-              <div className="mobile-detail-overlay">
-                <div className="mobile-detail-header">
-                  <button
-                    onClick={() => {
-                      setMobileDetailOpen(false);
-                      requestAnimationFrame(() => window.scrollTo(0, savedScrollRef.current));
-                    }}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.88rem', padding: '4px 0' }}
-                  >
-                    <ArrowLeft size={16} /> Back to list
-                  </button>
-                </div>
-                <div className="mobile-detail-body">
-                  <AdminJobDetail job={selectedJob} onRestore={handleRestore} />
-                </div>
-              </div>
+              <MobileDetailOverlay onBack={closeMobileDetail}>
+                <AdminJobDetail job={selectedJob} onRestore={handleRestore} />
+              </MobileDetailOverlay>
             )}
           </>
         )}
@@ -256,8 +188,8 @@ export default function RejectedJobs() {
 function AdminJobDetail({ job, onRestore }: { job: IJob; onRestore: (id: string) => void }) {
   const allLocations = parseAllLocations(job);
   const primaryLocation = getPrimaryLocation(job, allLocations);
-  const normalizedWorkplace = normalizeWorkplace(job.WorkplaceType);
-  const showWorkplaceBadge = normalizedWorkplace === 'Remote' || normalizedWorkplace === 'Hybrid';
+  const wp = normalizeWorkplace(job.WorkplaceType);
+  const showWp = wp === 'Remote' || wp === 'Hybrid';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -275,7 +207,7 @@ function AdminJobDetail({ job, onRestore }: { job: IJob; onRestore: (id: string)
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <MapPin size={12} /> {primaryLocation}
           </span>
-          {showWorkplaceBadge && <Badge variant="blue" style={{ fontSize: '0.7rem' }}>{normalizedWorkplace}</Badge>}
+          {showWp && <Badge variant="blue" style={{ fontSize: '0.7rem' }}>{wp}</Badge>}
         </div>
 
         <div className="flex flex-wrap gap-2" style={{ marginBottom: 10 }}>

@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, AlertCircle, CheckCircle2, ExternalLink, MapPin, RefreshCw, ShieldCheck } from 'lucide-react';
-import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useEffect, useRef, useState } from 'react';
+import { AlertCircle, CheckCircle2, ExternalLink, MapPin, RefreshCw, ShieldCheck } from 'lucide-react';
 import type { IJob } from '../types';
 import FormattedDescription from '../components/FormattedDescription';
+import MobileDetailOverlay from '../components/MobileDetailOverlay';
 import { Badge, Button, Container, EmptyState, PageHeader } from '../components/ui';
 import { formatPostedDate } from '../utils/date';
 import { parseAllLocations, getPrimaryLocation, isMeaningful, detailedSalary } from '../utils/job';
+import { useSplitView } from '../hooks/useSplitView';
 
 function isCleanDepartment(value?: string | null) {
   if (!isMeaningful(value)) return false;
@@ -42,9 +43,6 @@ export default function ReviewQueue() {
   const [jobs, setJobs] = useState<IJob[]>([]);
   const [totalJobs, setTotalJobs] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
-  const [splitHeight, setSplitHeight] = useState<number | null>(null);
   const [reanalyzingAll, setReanalyzingAll] = useState(false);
   const [reanalyzeSummary, setReanalyzeSummary] = useState<{
     total: number;
@@ -56,12 +54,23 @@ export default function ReviewQueue() {
 
   const heroRef = useRef<HTMLDivElement | null>(null);
   const summaryRef = useRef<HTMLDivElement | null>(null);
-  const splitViewRef = useRef<HTMLDivElement | null>(null);
-  const savedScrollRef = useRef(0);
-  const isMobile = useMediaQuery('(max-width: 767px)');
+
+  const {
+    selectedItem: selectedJob,
+    selectedId: selectedJobId,
+    setSelectedId: setSelectedJobId,
+    mobileDetailOpen,
+    openMobileDetail,
+    closeMobileDetail,
+    splitViewRef,
+    itemRefs: desktopJobRefs,
+    desktopSplitHeight,
+  } = useSplitView(jobs, {
+    observeRefs: [heroRef, summaryRef],
+    recalcDeps: [loading, reanalyzingAll],
+  });
 
   useEffect(() => { fetchQueue(); }, []);
-
 
   const fetchQueue = async () => {
     setLoading(true);
@@ -83,8 +92,7 @@ export default function ReviewQueue() {
     setJobs(previous => previous.filter(job => job._id !== id));
     setTotalJobs(prev => Math.max(0, prev - 1));
     if (selectedJobId === id) {
-      setSelectedJobId(null);
-      setMobileDetailOpen(false);
+      setSelectedJobId('');
     }
 
     const token = localStorage.getItem('token');
@@ -122,49 +130,42 @@ export default function ReviewQueue() {
     }
   };
 
-  useEffect(() => {
-    if (!jobs.length) {
-      setSelectedJobId(null);
-      return;
-    }
+  const renderJobListItem = (job: IJob, onClick: () => void) => {
+    const selected = job._id === selectedJobId;
+    const confidence = normalizeConfidence(job.ConfidenceScore);
+    const allLocations = parseAllLocations(job);
+    const primaryLocation = getPrimaryLocation(job, allLocations);
 
-    const exists = jobs.some(job => job._id === selectedJobId);
-    if (!selectedJobId || !exists) {
-      setSelectedJobId(jobs[0]._id);
-    }
-  }, [jobs, selectedJobId]);
-
-  const selectedJob = useMemo(() => {
-    if (!selectedJobId) return null;
-    return jobs.find(job => job._id === selectedJobId) || null;
-  }, [jobs, selectedJobId]);
-
-  useEffect(() => {
-    const updateSplitHeight = () => {
-      if (window.innerWidth < 768 || !splitViewRef.current) {
-        setSplitHeight(null);
-        return;
-      }
-
-      const top = splitViewRef.current.getBoundingClientRect().top;
-      const nextHeight = Math.max(window.innerHeight - top - 16, 320);
-      setSplitHeight(nextHeight);
-    };
-
-    const observer = new ResizeObserver(() => updateSplitHeight());
-    const observedNodes = [heroRef.current, summaryRef.current, splitViewRef.current].filter(Boolean) as Element[];
-
-    observedNodes.forEach(node => observer.observe(node));
-    window.addEventListener('resize', updateSplitHeight);
-    updateSplitHeight();
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', updateSplitHeight);
-    };
-  }, [jobs.length, loading, reanalyzingAll, isMobile]);
-
-  const desktopSplitHeight = splitHeight ? `${splitHeight}px` : undefined;
+    return (
+      <button
+        key={job._id}
+        ref={node => { desktopJobRefs.current[job._id] = node; }}
+        onClick={onClick}
+        style={{
+          borderTop: selected ? '1px solid var(--acid)' : '1px solid var(--border)',
+          borderRight: selected ? '1px solid var(--acid)' : '1px solid var(--border)',
+          borderBottom: selected ? '1px solid var(--acid)' : '1px solid var(--border)',
+          borderLeft: selected ? '4px solid var(--acid)' : '1px solid var(--border)',
+          background: selected ? 'var(--acid-soft)' : 'var(--bg-surface-2)',
+          borderRadius: 10, padding: 12, textAlign: 'left', cursor: 'pointer', width: '100%',
+        }}
+      >
+        <p style={{
+          fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.35,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>
+          {job.JobTitle}
+        </p>
+        <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {job.Company} | {primaryLocation}
+        </p>
+        <div className="flex flex-wrap gap-2" style={{ marginTop: 8 }}>
+          <Badge variant={confidenceVariant(confidence)} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{confidenceLabel(confidence)}</Badge>
+          <Badge variant={compactDomain(job.Domain) === 'Technical' ? 'green' : 'neutral'} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{compactDomain(job.Domain)}</Badge>
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -201,66 +202,15 @@ export default function ReviewQueue() {
           <EmptyState title="Queue is empty" body="No pending jobs for review." />
         ) : (
           <>
+            {/* Desktop split view */}
             <div
               ref={splitViewRef}
               className="split-grid"
-              style={{
-                gap: 14,
-                flex: 1,
-                minHeight: 0,
-                height: desktopSplitHeight,
-              }}
+              style={{ gap: 14, flex: 1, minHeight: 0, height: desktopSplitHeight }}
             >
               <section style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface)', minHeight: 0, height: desktopSplitHeight, overflowY: 'auto' }}>
                 <div className="flex flex-col" style={{ gap: 8, padding: 12 }}>
-                  {jobs.map(job => {
-                    const selected = job._id === selectedJobId;
-                    const confidence = normalizeConfidence(job.ConfidenceScore);
-                    const allLocations = parseAllLocations(job);
-                    const primaryLocation = getPrimaryLocation(job, allLocations);
-
-                    return (
-                      <button
-                        key={job._id}
-                        onClick={() => setSelectedJobId(job._id)}
-                        style={{
-                          borderTop: selected ? '1px solid var(--acid)' : '1px solid var(--border)',
-                          borderRight: selected ? '1px solid var(--acid)' : '1px solid var(--border)',
-                          borderBottom: selected ? '1px solid var(--acid)' : '1px solid var(--border)',
-                          borderLeft: selected ? '4px solid var(--acid)' : '1px solid var(--border)',
-                          background: selected ? 'var(--acid-soft)' : 'var(--bg-surface-2)',
-                          borderRadius: 10,
-                          padding: 12,
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          width: '100%',
-                        }}
-                      >
-                        <p
-                          style={{
-                            fontSize: '0.9rem',
-                            fontWeight: 700,
-                            color: 'var(--text-primary)',
-                            lineHeight: 1.35,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {job.JobTitle}
-                        </p>
-                        <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {job.Company} | {primaryLocation}
-                        </p>
-
-                        <div className="flex flex-wrap gap-2" style={{ marginTop: 8 }}>
-                          <Badge variant={confidenceVariant(confidence)} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{confidenceLabel(confidence)}</Badge>
-                          <Badge variant={compactDomain(job.Domain) === 'Technical' ? 'green' : 'neutral'} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{compactDomain(job.Domain)}</Badge>
-                        </div>
-                      </button>
-                    );
-                  })}
+                  {jobs.map(job => renderJobListItem(job, () => setSelectedJobId(job._id)))}
                 </div>
               </section>
 
@@ -271,52 +221,16 @@ export default function ReviewQueue() {
               </section>
             </div>
 
-            {/* Mobile-only job list */}
+            {/* Mobile list */}
             <div className="mobile-list-only flex flex-col gap-2">
-              {jobs.map(job => {
-                const confidence = normalizeConfidence(job.ConfidenceScore);
-                const allLocations = parseAllLocations(job);
-                const primaryLocation = getPrimaryLocation(job, allLocations);
-
-                return (
-                  <button
-                    key={job._id}
-                    onClick={() => {
-                      setSelectedJobId(job._id);
-                      savedScrollRef.current = window.scrollY;
-                      setMobileDetailOpen(true);
-                    }}
-                    style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-surface)', padding: '14px 12px', textAlign: 'left', width: '100%' }}
-                  >
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3 }}>{job.JobTitle}</p>
-                    <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 4 }}>{job.Company} · {primaryLocation}</p>
-                    <div className="flex flex-wrap gap-2" style={{ marginTop: 8 }}>
-                      <Badge variant={confidenceVariant(confidence)} style={{ fontSize: '0.68rem' }}>{confidenceLabel(confidence)}</Badge>
-                      <Badge variant={compactDomain(job.Domain) === 'Technical' ? 'green' : 'neutral'} style={{ fontSize: '0.68rem' }}>{compactDomain(job.Domain)}</Badge>
-                    </div>
-                  </button>
-                );
-              })}
+              {jobs.map(job => renderJobListItem(job, () => openMobileDetail(job._id)))}
             </div>
 
-            {/* Mobile detail overlay */}
+            {/* Mobile overlay */}
             {mobileDetailOpen && selectedJob && (
-              <div className="mobile-detail-overlay">
-                <div className="mobile-detail-header">
-                  <button
-                    onClick={() => {
-                      setMobileDetailOpen(false);
-                      requestAnimationFrame(() => window.scrollTo(0, savedScrollRef.current));
-                    }}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.88rem', padding: '4px 0' }}
-                  >
-                    <ArrowLeft size={16} /> Back to queue
-                  </button>
-                </div>
-                <div className="mobile-detail-body">
-                  <ReviewDetail job={selectedJob} onDecision={handleDecision} />
-                </div>
-              </div>
+              <MobileDetailOverlay onBack={closeMobileDetail} backLabel="Back to queue">
+                <ReviewDetail job={selectedJob} onDecision={handleDecision} />
+              </MobileDetailOverlay>
             )}
           </>
         )}

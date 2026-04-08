@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Container, PageHeader, Button, Badge, Input, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
+import { relativeTime } from '../utils/date';
 
 type FeedbackStatus = 'unread' | 'read' | 'resolved' | 'archived';
 
@@ -38,22 +39,7 @@ function statusDotColor(status: FeedbackStatus) {
   return 'var(--subtle-ink)';
 }
 
-function relativeTime(input?: string) {
-  if (!input) return 'Unknown time';
-  const date = new Date(input);
-  if (Number.isNaN(date.getTime())) return 'Unknown time';
-
-  const diffMs = Date.now() - date.getTime();
-  const seconds = Math.floor(diffMs / 1000);
-  if (seconds < 60) return 'Just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString();
-}
+// relativeTime imported from utils/date
 
 export default function AdminFeedback() {
   const { token } = useAuth();

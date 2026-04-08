@@ -28,6 +28,26 @@ export function relativeDate(value?: string | null): string {
 }
 
 /**
+ * Higher-granularity relative time for recent events (feedback, logs).
+ * Examples: "Just now", "5m ago", "3h ago", "2d ago", or falls back to localized date.
+ */
+export function relativeTime(value?: string | null): string {
+  const date = toDate(value);
+  if (!date) return 'Unknown time';
+
+  const diffMs = Date.now() - date.getTime();
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 60) return 'Just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
+/**
  * Format a date string into a localized short date.
  * Example: "Jan 15, 2026". Returns "N/A" if the value is falsy or invalid.
  */
