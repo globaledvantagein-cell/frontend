@@ -3,42 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import type { IJob } from '../types';
 import { Badge } from './ui';
+import { relativeDate } from '../utils/date';
+import { compactSalary, parseAllLocations, getPrimaryLocation } from '../utils/job';
 
 interface HomeJobCardProps {
   job: IJob;
-}
-
-function relativeDate(value?: string | null) {
-  if (!value) return 'Recently added';
-  const posted = new Date(value);
-  if (Number.isNaN(posted.getTime())) return 'Recently added';
-  const diff = Math.floor((Date.now() - posted.getTime()) / 86400000);
-  if (diff <= 0) return 'Today';
-  if (diff === 1) return '1d ago';
-  if (diff < 7) return `${diff}d ago`;
-  if (diff < 30) return `${Math.floor(diff / 7)}w ago`;
-  return `${Math.floor(diff / 30)}mo ago`;
-}
-
-function getPrimaryLocation(job: IJob) {
-  const allLocations = [
-    ...String(job.Location || '').split(';').map(part => part.trim()).filter(Boolean),
-    ...(job.AllLocations || []).map(part => String(part).trim()).filter(Boolean),
-  ];
-
-  return [...new Set(allLocations)][0] || 'Germany';
-}
-
-function compactSalary(job: IJob) {
-  if (job.SalaryMin == null && job.SalaryMax == null) return null;
-  const symbol = job.SalaryCurrency === 'EUR' ? '€' : job.SalaryCurrency === 'USD' ? '$' : '';
-  const min = job.SalaryMin != null ? `${Math.round(job.SalaryMin / 1000)}K` : null;
-  const max = job.SalaryMax != null ? `${Math.round(job.SalaryMax / 1000)}K` : null;
-
-  if (min && max) return `${symbol}${min}-${max}`;
-  if (min) return `${symbol}${min}+`;
-  if (max) return `${symbol}${max}`;
-  return null;
 }
 
 function getInitialColors(company: string) {
@@ -57,7 +26,8 @@ export default function HomeJobCard({ job }: HomeJobCardProps) {
   const [hovered, setHovered] = useState(false);
   const destination = `/jobs?id=${job._id}`;
   const salary = compactSalary(job);
-  const location = getPrimaryLocation(job);
+  const allLocations = parseAllLocations(job);
+  const location = getPrimaryLocation(job, allLocations) || 'Germany';
   const initialColors = useMemo(() => getInitialColors(job.Company || 'J'), [job.Company]);
 
   const badges = [

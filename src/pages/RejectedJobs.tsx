@@ -5,59 +5,8 @@ import { Container, PageHeader, Button, EmptyState, Badge } from '../components/
 import { CONTENT } from '../theme/content';
 import FormattedDescription from '../components/FormattedDescription';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-
-function formatPostedDate(value?: string | null) {
-  if (!value) return 'N/A';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function relativeDate(value?: string | null) {
-  if (!value) return 'Unknown';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Unknown';
-  const diff = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff <= 0) return 'Today';
-  if (diff === 1) return '1d ago';
-  if (diff < 7) return `${diff}d ago`;
-  if (diff < 30) return `${Math.floor(diff / 7)}w ago`;
-  return `${Math.floor(diff / 30)}mo ago`;
-}
-
-function normalizeWorkplace(value?: string | null): string {
-  if (!value) return 'Unknown';
-  const lower = value.toLowerCase();
-  if (lower.includes('remote') || lower.includes('telecommute')) return 'Remote';
-  if (lower.includes('hybrid')) return 'Hybrid';
-  if (lower.includes('onsite') || lower.includes('on-site') || lower.includes('office')) return 'Onsite';
-  return 'Unknown';
-}
-
-function isMeaningful(value?: string | null) {
-  if (!value) return false;
-  const normalized = value.trim();
-  return Boolean(normalized) && normalized.toLowerCase() !== 'n/a';
-}
-
-function parseAllLocations(job: IJob) {
-  const fromLocationField = String(job.Location || '')
-    .split(';')
-    .map(value => value.trim())
-    .filter(Boolean);
-
-  const fromAllLocations = (job.AllLocations || [])
-    .map(value => String(value).trim())
-    .filter(Boolean);
-
-  return [...new Set([...fromLocationField, ...fromAllLocations])];
-}
-
-function getPrimaryLocation(job: IJob, locations: string[]) {
-  if (locations.length > 0) return locations[0];
-  if (job.Country && String(job.Country).toLowerCase() !== 'n/a') return job.Country;
-  return 'Germany'; 
-}
+import { formatPostedDate, relativeDate } from '../utils/date';
+import { parseAllLocations, getPrimaryLocation, isMeaningful, normalizeWorkplace } from '../utils/job';
 
 export default function RejectedJobs() {
   const [jobs, setJobs] = useState<IJob[]>([]);

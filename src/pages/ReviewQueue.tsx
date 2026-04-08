@@ -1,28 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlertCircle, CheckCircle2, ExternalLink, MapPin, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { AlertCircle, CheckCircle2, ExternalLink, MapPin, RefreshCw, ShieldCheck } from 'lucide-react';
 import type { IJob } from '../types';
 import FormattedDescription from '../components/FormattedDescription';
 import { Badge, Button, Container, EmptyState, PageHeader } from '../components/ui';
-
-function toDate(value?: string | null) {
-  if (!value) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function formatPostedDate(value?: string | null) {
-  const date = toDate(value);
-  if (!date) return 'N/A';
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function isMeaningful(value?: string | null) {
-  if (!value) return false;
-  const normalized = value.trim();
-  return Boolean(normalized) && normalized.toLowerCase() !== 'n/a';
-}
+import { formatPostedDate } from '../utils/date';
+import { parseAllLocations, getPrimaryLocation, isMeaningful, detailedSalary } from '../utils/job';
 
 function isCleanDepartment(value?: string | null) {
   if (!isMeaningful(value)) return false;
@@ -30,46 +13,6 @@ function isCleanDepartment(value?: string | null) {
   if (normalized.length > 30) return false;
   if (/\d/.test(normalized)) return false;
   return true;
-}
-
-function parseAllLocations(job: IJob) {
-  const fromLocationField = String(job.Location || '')
-    .split(';')
-    .map(value => value.trim())
-    .filter(Boolean);
-
-  const fromAllLocations = (job.AllLocations || [])
-    .map(value => String(value).trim())
-    .filter(Boolean);
-
-  return [...new Set([...fromLocationField, ...fromAllLocations])];
-}
-
-function getPrimaryLocation(job: IJob, locations: string[]) {
-  if (locations.length > 0) return locations[0];
-  return job.Location || 'N/A';
-}
-
-function detailedSalary(job: IJob) {
-  if (job.SalaryMin == null && job.SalaryMax == null) return null;
-
-  const symbol = job.SalaryCurrency === 'EUR' ? 'EUR ' : job.SalaryCurrency === 'USD' ? '$' : (job.SalaryCurrency ? `${job.SalaryCurrency} ` : '');
-  const interval = job.SalaryInterval === 'per-year-salary'
-    ? '/ year'
-    : job.SalaryInterval === 'per-month-salary'
-      ? '/ month'
-      : job.SalaryInterval === 'per-hour-wage'
-        ? '/ hour'
-        : '';
-
-  const formatter = new Intl.NumberFormat('en-US');
-  const min = job.SalaryMin != null ? formatter.format(job.SalaryMin) : null;
-  const max = job.SalaryMax != null ? formatter.format(job.SalaryMax) : null;
-
-  if (min && max) return `${symbol}${min} - ${symbol}${max}${interval}`;
-  if (min) return `${symbol}${min}+${interval}`;
-  if (max) return `${symbol}${max}${interval}`;
-  return null;
 }
 
 function normalizeConfidence(score?: number) {

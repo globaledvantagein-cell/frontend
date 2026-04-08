@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { ArrowLeft, ExternalLink, MapPin, Search, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowLeft, Search, SlidersHorizontal, X } from 'lucide-react';
 import type { IJob } from '../types';
-import FormattedDescription from '../components/FormattedDescription';
+import PublicJobDetail from '../components/PublicJobDetail';
 import { getVisitorId } from '../utils/visitorId';
 import { Badge, Button, Container, EmptyState, Input } from '../components/ui';
 import FilterDropdown from '../components/FilterDropdown';
 import { BRAND } from '../theme/brand';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useSearchParams } from 'react-router-dom';
+import { toDate, relativeDate } from '../utils/date';
+import { parseAllLocations, getPrimaryLocation, normalizeWorkplace, compactSalary } from '../utils/job';
 
 const EXPERIENCE_OPTIONS = ['Entry', 'Mid', 'Senior', 'Lead', 'Staff'];
 const WORKPLACE_OPTIONS = ['Remote', 'Onsite', 'Hybrid'];
@@ -52,105 +54,6 @@ type FilterState = {
   search: string;
 };
 
-function toDate(value?: string | null) {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatPostedDate(value?: string | null) {
-  const date = toDate(value);
-  if (!date) return 'N/A';
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function relativeDate(value?: string | null) {
-  const date = toDate(value);
-  if (!date) return 'Unknown';
-  const diff = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff <= 0) return 'Today';
-  if (diff === 1) return '1d ago';
-  if (diff < 7) return `${diff}d ago`;
-  if (diff < 30) return `${Math.floor(diff / 7)}w ago`;
-  return `${Math.floor(diff / 30)}mo ago`;
-}
-
-function normalizeSalary(value: number | null, interval: string | null): number | null {
-  if (value == null || value <= 0) return null;
-
-  const normalizedInterval = String(interval || '').toLowerCase();
-  const isAnnual = !normalizedInterval || normalizedInterval === 'per-year-salary' || normalizedInterval === 'yearly';
-  if (isAnnual && value > 0 && value < 1000) return value * 1000;
-
-  const isMonthly = normalizedInterval === 'per-month-salary' || normalizedInterval === 'monthly';
-  if (isMonthly && value > 0 && value < 100) return value * 1000;
-
-  return value;
-}
-
-function compactSalary(job: IJob) {
-  const min = normalizeSalary(job.SalaryMin, job.SalaryInterval);
-  const max = normalizeSalary(job.SalaryMax, job.SalaryInterval);
-  if (min == null && max == null) return null;
-
-  const symbol = job.SalaryCurrency === 'EUR' ? '€' : job.SalaryCurrency === 'USD' ? '$' : '';
-  const formattedMin = min != null && min > 0 ? `${Math.round(min / 1000)}K` : null;
-  const formattedMax = max != null && max > 0 ? `${Math.round(max / 1000)}K` : null;
-
-  if (formattedMin && formattedMax) return `${symbol}${formattedMin}-${formattedMax}`;
-  if (formattedMin) return `${symbol}${formattedMin}+`;
-  if (formattedMax) return `${symbol}${formattedMax}`;
-  return null;
-}
-
-function detailedSalary(job: IJob) {
-  const min = normalizeSalary(job.SalaryMin, job.SalaryInterval);
-  const max = normalizeSalary(job.SalaryMax, job.SalaryInterval);
-  if (min == null && max == null) return null;
-
-  const symbol = job.SalaryCurrency === 'EUR' ? '€' : job.SalaryCurrency === 'USD' ? '$' : (job.SalaryCurrency ? `${job.SalaryCurrency} ` : '');
-  const interval = job.SalaryInterval === 'per-year-salary'
-    ? '/ year'
-    : job.SalaryInterval === 'per-month-salary'
-      ? '/ month'
-      : job.SalaryInterval === 'per-hour-wage'
-        ? '/ hour'
-        : '/ year';
-
-  const formatter = new Intl.NumberFormat('en-US');
-  const formattedMin = min != null && min > 0 ? formatter.format(min) : null;
-  const formattedMax = max != null && max > 0 ? formatter.format(max) : null;
-
-  if (formattedMin && formattedMax) return `${symbol}${formattedMin} - ${symbol}${formattedMax} ${interval}`;
-  if (formattedMin) return `${symbol}${formattedMin}+ ${interval}`;
-  if (formattedMax) return `${symbol}${formattedMax} ${interval}`;
-  return null;
-}
-
-function isMeaningful(value?: string | null) {
-  if (!value) return false;
-  const normalized = value.trim();
-  return Boolean(normalized) && normalized.toLowerCase() !== 'n/a';
-}
-
-function parseAllLocations(job: IJob) {
-  const fromLocationField = String(job.Location || '')
-    .split(';')
-    .map(value => value.trim())
-    .filter(Boolean);
-
-  const fromAllLocations = (job.AllLocations || [])
-    .map(value => String(value).trim())
-    .filter(Boolean);
-
-  return [...new Set([...fromLocationField, ...fromAllLocations])];
-}
-
-function getPrimaryLocation(job: IJob, locations: string[]) {
-  if (locations.length > 0) return locations[0];
-  return job.Location || 'N/A';
-}
-
 function getEffectivePostedDate(job: IJob) {
   return toDate(job.PostedDate || job.scrapedAt);
 }
@@ -186,15 +89,6 @@ function deriveExperienceFromTitle(title?: string | null): string {
   if (/\b(senior|sr\.?)\b/.test(lower)) return 'Senior';
   if (/\b(junior|jr\.?|entry|associate|graduate)\b/.test(lower)) return 'Entry';
   return 'Mid';
-}
-
-function normalizeWorkplace(value?: string | null): string {
-  if (!value) return 'Unspecified';
-  const lower = value.trim().toLowerCase();
-  if (lower === 'remote' || lower === 'fully remote' || lower === 'work from home') return 'Remote';
-  if (lower === 'onsite' || lower === 'on-site' || lower === 'in-office' || lower === 'office') return 'Onsite';
-  if (lower === 'hybrid' || lower === 'flex' || lower === 'flexible') return 'Hybrid';
-  return 'Unspecified';
 }
 
 function matchesExperienceFilter(job: IJob, selectedExperience: string) {
@@ -719,8 +613,8 @@ export default function Dashboard() {
                   ) : filteredJobs.map(job => {
                     const selected = selectedJobId === job._id;
                     const salary = compactSalary(job);
-                    const normalizedWorkplace = normalizeWorkplace(job.WorkplaceType);
-                    const showWorkplaceBadge = normalizedWorkplace === 'Remote' || normalizedWorkplace === 'Hybrid';
+                    const normalizedWp = normalizeWorkplace(job.WorkplaceType);
+                    const showWorkplaceBadge = normalizedWp === 'Remote' || normalizedWp === 'Hybrid';
 
                     return (
                       <button
@@ -746,7 +640,7 @@ export default function Dashboard() {
 
                         {(showWorkplaceBadge || salary) && (
                           <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
-                            {showWorkplaceBadge && <Badge variant="blue" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{normalizedWorkplace}</Badge>}
+                            {showWorkplaceBadge && <Badge variant="blue" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{normalizedWp}</Badge>}
                             {salary && <Badge variant="green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{salary}</Badge>}
                           </div>
                         )}
@@ -816,98 +710,6 @@ export default function Dashboard() {
           </>
         )}
       </Container>
-    </div>
-  );
-}
-
-function PublicJobDetail({ job, onTrackApplyClick }: { job: IJob; onTrackApplyClick: (jobId: string) => Promise<void> }) {
-  const [showAllLocations, setShowAllLocations] = useState(false);
-  const [trackingApply, setTrackingApply] = useState(false);
-
-  const allLocations = parseAllLocations(job);
-  const primaryLocation = getPrimaryLocation(job, allLocations);
-  const extraLocations = allLocations.slice(1);
-  const salary = detailedSalary(job);
-  const normalizedWorkplace = normalizeWorkplace(job.WorkplaceType);
-  const showWorkplaceBadge = normalizedWorkplace === 'Remote' || normalizedWorkplace === 'Hybrid';
-
-  const handleApplyNow = async () => {
-    window.open(job.ApplicationURL, '_blank', 'noopener,noreferrer');
-    try {
-      setTrackingApply(true);
-      await onTrackApplyClick(job._id);
-    } finally {
-      setTrackingApply(false);
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface-2)', padding: 16, position: 'relative' }}>
-        <span style={{ position: 'absolute', right: 14, top: 14, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          Posted: {formatPostedDate(job.PostedDate)}
-        </span>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.2rem,2.6vw,1.55rem)', color: 'var(--text-primary)', marginBottom: 10, paddingRight: 80 }}>
-          {job.JobTitle}
-        </h2>
-
-        <div className="flex items-center flex-wrap gap-2" style={{ marginBottom: 10 }}>
-          <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>{job.Company}</span>
-          <span style={{ color: 'var(--text-muted)' }}>•</span>
-          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <MapPin size={12} /> {primaryLocation}
-          </span>
-          {showWorkplaceBadge && <Badge variant="blue" style={{ fontSize: '0.7rem' }}>{normalizedWorkplace}</Badge>}
-        </div>
-
-        <div className="flex flex-wrap gap-2" style={{ marginBottom: 10 }}>
-          {(job.Domain === 'Technical' || job.Domain === 'Non-Technical') && <Badge variant={job.Domain === 'Technical' ? 'green' : 'neutral'}>{job.Domain}</Badge>}
-          {isMeaningful(job.ExperienceLevel) && job.ExperienceLevel !== 'N/A' && <Badge variant="neutral">{job.ExperienceLevel}</Badge>}
-          {isMeaningful(job.EmploymentType) && <Badge variant="neutral">{job.EmploymentType}</Badge>}
-        </div>
-
-        {salary && (
-          <p style={{ marginBottom: 8, fontSize: '0.96rem', fontWeight: 700, color: 'var(--success)' }}>
-            {salary}
-          </p>
-        )}
-
-        {extraLocations.length > 0 && (
-          <div style={{ marginBottom: 10 }}>
-            <button
-              onClick={() => setShowAllLocations(previous => !previous)}
-              style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer' }}
-            >
-              {showAllLocations ? 'Hide locations' : `${extraLocations.length + 1} locations`}
-            </button>
-            {showAllLocations && (
-              <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
-                {allLocations.map(location => (
-                  <Badge key={location} variant="neutral" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{location}</Badge>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between flex-wrap gap-2" style={{ marginTop: 10 }}>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button size="sm" onClick={handleApplyNow} loading={trackingApply}>
-                Apply Now <ExternalLink size={12} />
-            </Button>
-            {job.GermanRequired === false && <Badge variant="acid">🇬🇧 English Only</Badge>}
-          </div>
-
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            {job.applyClicks || 0} apply clicks
-          </span>
-        </div>
-      </div>
-
-      <div style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface)', padding: 14 }}>
-        <FormattedDescription description={job.Description || ''} />
-      </div>
-
     </div>
   );
 }
