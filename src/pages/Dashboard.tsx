@@ -36,6 +36,7 @@ export default function Dashboard() {
     setFilters,
     filteredJobs,
     hasActiveFilters,
+    companyOptions,
     activeFilterCount,
     clearFilters,
   } = useJobFilters(jobs);
@@ -183,6 +184,7 @@ export default function Dashboard() {
         <Container>
             <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, textAlign: 'center' }}>
             {BRAND.appName}
+            
             </p>
             <h1 style={{ fontSize: 'clamp(1.45rem, 3.8vw, 2rem)', fontFamily: "'Playfair Display',serif", color: 'var(--text-primary)', textAlign: 'center' }}>
             Browse English-Speaking Roles
@@ -206,6 +208,7 @@ export default function Dashboard() {
           <DashboardFilterBar
             filters={filters}
             setFilters={setFilters}
+            companyOptions={companyOptions}
             filteredCount={filteredJobs.length}
             totalCount={totalJobs}
             hasActiveFilters={hasActiveFilters}
@@ -222,6 +225,7 @@ export default function Dashboard() {
           <MobileFilterSheet
             filters={filters}
             setFilters={setFilters}
+            companyOptions={ companyOptions}
             filteredCount={filteredJobs.length}
             hasActiveFilters={hasActiveFilters}
             clearFilters={clearFilters}

@@ -8,9 +8,6 @@ import { Input } from './ui';
 import FilterDropdown from './FilterDropdown';
 import {
   SORT_DROPDOWN_OPTIONS,
-  DOMAIN_DROPDOWN_OPTIONS,
-  EXPERIENCE_DROPDOWN_OPTIONS,
-  WORKPLACE_DROPDOWN_OPTIONS,
   DATE_DROPDOWN_OPTIONS,
   FILTER_CONTROL_STYLE,
   type FilterState,
@@ -20,6 +17,7 @@ import {
 
 interface FilterBarProps {
   filters: FilterState;
+  companyOptions:Array<{value:string;label:string}>;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   filteredCount: number;
   totalCount: number;
@@ -38,6 +36,7 @@ export function DashboardFilterBar({
   totalCount,
   hasActiveFilters,
   activeFilterCount,
+  companyOptions,
   clearFilters,
   openDropdown,
   setOpenDropdown,
@@ -59,39 +58,24 @@ export function DashboardFilterBar({
 
   const renderFilterSelects = (widthOverride?: number | string) => (
     <>
-      <FilterDropdown
-        id="domain"
-        label="Domain"
-        value={filters.domain}
-        options={DOMAIN_DROPDOWN_OPTIONS}
-        onChange={val => setFilters(previous => ({ ...previous, domain: val }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.domain !== 'All'}
-        width={widthOverride ?? 130}
-      />
-      <FilterDropdown
-        id="experience"
-        label="Experience"
-        value={filters.experience}
-        options={EXPERIENCE_DROPDOWN_OPTIONS}
-        onChange={val => setFilters(previous => ({ ...previous, experience: val }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.experience !== 'All'}
-        width={widthOverride ?? 130}
-      />
-      <FilterDropdown
-        id="workplace"
-        label="Workplace"
-        value={filters.workplace}
-        options={WORKPLACE_DROPDOWN_OPTIONS}
-        onChange={val => setFilters(previous => ({ ...previous, workplace: val }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.workplace !== 'All'}
-        width={widthOverride ?? 130}
-      />
+      
+
+   
+
+<FilterDropdown
+      id="company"
+      label="Company"
+      value={filters.company}
+      options={companyOptions}
+      onChange={val => setFilters(prev => ({ ...prev, company: val }))}
+      openId={openDropdown}
+      onOpenChange={setOpenDropdown}
+      active={filters.company !== 'All'}
+      width={widthOverride ?? 160}
+      searchable={true}
+    />
+
+
       <FilterDropdown
         id="date"
         label="Date"
@@ -217,6 +201,7 @@ export function DashboardFilterBar({
 // ── Mobile filter bottom sheet ──────────────────────────────────
 
 interface MobileFilterSheetProps {
+  companyOptions:Array<{value:string;label:string}>
   filters: FilterState;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   filteredCount: number;
@@ -233,11 +218,14 @@ export function MobileFilterSheet({
   filteredCount,
   hasActiveFilters,
   clearFilters,
+  companyOptions,
   openDropdown,
   setOpenDropdown,
   onClose,
 }: MobileFilterSheetProps) {
   const renderSortSelect = (width: number | string) => (
+
+    
     <FilterDropdown
       id="sort"
       label="Sort"
@@ -253,39 +241,21 @@ export function MobileFilterSheet({
 
   const renderFilterSelects = (widthOverride?: number | string) => (
     <>
-      <FilterDropdown
-        id="domain"
-        label="Domain"
-        value={filters.domain}
-        options={DOMAIN_DROPDOWN_OPTIONS}
-        onChange={val => setFilters(previous => ({ ...previous, domain: val }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.domain !== 'All'}
-        width={widthOverride ?? 130}
-      />
-      <FilterDropdown
-        id="experience"
-        label="Experience"
-        value={filters.experience}
-        options={EXPERIENCE_DROPDOWN_OPTIONS}
-        onChange={val => setFilters(previous => ({ ...previous, experience: val }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.experience !== 'All'}
-        width={widthOverride ?? 130}
-      />
-      <FilterDropdown
-        id="workplace"
-        label="Workplace"
-        value={filters.workplace}
-        options={WORKPLACE_DROPDOWN_OPTIONS}
-        onChange={val => setFilters(previous => ({ ...previous, workplace: val }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.workplace !== 'All'}
-        width={widthOverride ?? 130}
-      />
+
+
+    <FilterDropdown
+      id="company"
+      label="Company"
+      value={filters.company}
+      options={companyOptions}
+      onChange={val => setFilters(prev => ({ ...prev, company: val }))}
+      openId={openDropdown}
+      onOpenChange={setOpenDropdown}
+      active={filters.company !== 'All'}
+      width={widthOverride ?? 160}
+      searchable={true}
+    />
+     
       <FilterDropdown
         id="date"
         label="Date"
