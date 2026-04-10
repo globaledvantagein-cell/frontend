@@ -63,17 +63,20 @@ export function DashboardFilterBar({
    
 
 <FilterDropdown
-      id="company"
-      label="Company"
-      value={filters.company}
-      options={companyOptions}
-      onChange={val => setFilters(prev => ({ ...prev, company: val }))}
-      openId={openDropdown}
-      onOpenChange={setOpenDropdown}
-      active={filters.company !== 'All'}
-      width={widthOverride ?? 160}
-      searchable={true}
-    />
+  id="company"
+  label="Company"
+  value=""
+  options={companyOptions}
+  onChange={() => {}}
+  multiSelect={true}
+  selectedValues={filters.company}
+  onMultiChange={vals => setFilters(prev => ({ ...prev, company: vals }))}
+  openId={openDropdown}
+  onOpenChange={setOpenDropdown}
+  active={filters.company.length > 0}
+  width={widthOverride ?? 160}
+  searchable={true}
+/>
 
 
       <FilterDropdown
@@ -243,18 +246,21 @@ export function MobileFilterSheet({
     <>
 
 
-    <FilterDropdown
-      id="company"
-      label="Company"
-      value={filters.company}
-      options={companyOptions}
-      onChange={val => setFilters(prev => ({ ...prev, company: val }))}
-      openId={openDropdown}
-      onOpenChange={setOpenDropdown}
-      active={filters.company !== 'All'}
-      width={widthOverride ?? 160}
-      searchable={true}
-    />
+ <FilterDropdown
+  id="company"
+  label="Company"
+  value=""
+  options={companyOptions}
+  onChange={() => {}}
+  multiSelect={true}
+  selectedValues={filters.company}
+  onMultiChange={vals => setFilters(prev => ({ ...prev, company: vals }))}
+  openId={openDropdown}
+  onOpenChange={setOpenDropdown}
+  active={filters.company.length > 0}
+  width={widthOverride ?? 160}
+  searchable={true}
+/>
      
       <FilterDropdown
         id="date"

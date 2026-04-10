@@ -41,14 +41,14 @@ export type SortOption = 'newest' | 'company';
 export type DateFilter = 'All' | 'Today' | 'This Week' | 'This Month';
 
 export type FilterState = {
-  company:string,
+  company:string[],
   date: DateFilter;
   sort: SortOption;
   search: string;
 };
 
 export const DEFAULT_FILTERS: FilterState = {
-  company:"All",
+  company:[],
   date: 'All',
   sort: 'newest',
   search: '',
@@ -95,7 +95,7 @@ export function useJobFilters(jobs: IJob[]) {
     const search = filters.search.trim().toLowerCase();
 
     const filtered = jobs.filter(job => {
-      if(filters.company!=="All" && job.Company != filters.company  ) return false;
+      if (filters.company.length > 0 && !filters.company.includes(job.Company)) return false;
       if (!matchesDateFilter(job, filters.date)) return false;
 
       if (!search) return true;
@@ -120,18 +120,20 @@ export function useJobFilters(jobs: IJob[]) {
   const hasActiveFilters = useMemo(() => {
     return Boolean(
       filters.search.trim()
-      || filters.company !="All"
+     || filters.company.length > 0
       || filters.date !== 'All'
     );
   }, [filters]);
 
-  const activeFilterCount = [ filters.date]
-    .filter(v => v !== 'All').length + (filters.search.trim() ? 1 : 0);
+  const activeFilterCount = [filters.date]
+  .filter(v => v !== 'All').length 
+  + (filters.search.trim() ? 1 : 0)
+  + (filters.company.length > 0 ? 1 : 0);
 
   const clearFilters = () => {
     setFilters(previous => ({
       ...previous,
-      company:"All",
+      company:[],
       date: 'All',
       search: '',
     }));

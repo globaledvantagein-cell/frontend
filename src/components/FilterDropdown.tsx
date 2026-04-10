@@ -25,6 +25,9 @@ interface FilterDropdownProps {
   width?: number | string;
   /** Renders a search box at the top of the panel (useful for long lists) */
   searchable?: boolean;
+  multiSelect?: boolean;
+  selectedValues?: string[];
+  onMultiChange?: (value: string[]) => void;
 }
 
 export default function FilterDropdown({
@@ -39,6 +42,9 @@ export default function FilterDropdown({
   style,
   width,
   searchable = false,
+  multiSelect = false,  
+  selectedValues=[],
+  onMultiChange,    
 }: FilterDropdownProps) {
   const isOpen = openId === id;
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -149,7 +155,9 @@ export default function FilterDropdown({
   }, [isOpen, isMobile]);
 
   const selectedOption = options.find(o => o.value === value);
-  const displayLabel = value === 'All' || !selectedOption ? label : selectedOption.label;
+  const displayLabel= multiSelect
+  ?(selectedValues.length > 0?`${selectedValues.length} selected`:label)
+  :(value=="All" || !selectedOption ?label:selectedOption.label);
 
   const filteredOptions = searchable && search.trim()
     ? options.filter(o => o.value === 'All' || o.label.toLowerCase().includes(search.toLowerCase()))
@@ -163,7 +171,9 @@ export default function FilterDropdown({
         <div style={{ padding: '10px 12px', fontSize: '0.76rem', color: 'var(--text-muted)', textAlign: 'center' }}>No results</div>
       ) : (
         filteredOptions.map(option => {
-          const selected = option.value === value;
+          const selected = multiSelect
+  ? (option.value === 'All' ? selectedValues.length === 0 : selectedValues.includes(option.value))
+  : option.value === value;
           return (
             <button
               key={option.value}
@@ -171,7 +181,20 @@ export default function FilterDropdown({
               role="option"
               aria-selected={selected}
               onMouseDown={e => e.stopPropagation()}
-              onClick={() => selectOption(option.value)}
+            onClick={() => {
+  if (!multiSelect) {
+    selectOption(option.value);
+    return;
+  }
+  if (!onMultiChange) return;
+  if (option.value === 'All') {
+    onMultiChange([]);
+  } else if (selectedValues.includes(option.value)) {
+    onMultiChange(selectedValues.filter(v => v !== option.value));
+  } else {
+    onMultiChange([...selectedValues, option.value]);
+  }
+}}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 width: '100%',
