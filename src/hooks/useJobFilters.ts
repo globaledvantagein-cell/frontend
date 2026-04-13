@@ -88,8 +88,11 @@ function sortJobs(jobs: IJob[], sort: SortOption) {
 
 // ── Hook ────────────────────────────────────────────────────────
 
-export function useJobFilters(jobs: IJob[]) {
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+export function useJobFilters(jobs: IJob[],initialCompany?:string) {
+  const [filters, setFilters] = useState<FilterState>(()=>({
+       ...DEFAULT_FILTERS,
+    company:initialCompany ? [initialCompany] : [],
+  }));
 
   const filteredJobs = useMemo(() => {
     const search = filters.search.trim().toLowerCase();

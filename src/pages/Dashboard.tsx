@@ -30,7 +30,7 @@ export default function Dashboard() {
   const handledDeepLinkRef = useRef<string | null>(null);
   const savedScrollRef = useRef(0);
   const deepLinkedJobId = searchParams.get('id');
-
+const companyParam = searchParams.get('company');
   const {
     filters,
     setFilters,
@@ -39,7 +39,7 @@ export default function Dashboard() {
     companyOptions,
     activeFilterCount,
     clearFilters,
-  } = useJobFilters(jobs);
+  } = useJobFilters(jobs,companyParam || undefined);
 
   useEffect(() => {
     document.title = `${BRAND.appName} Jobs`;

@@ -33,7 +33,7 @@ function CompanyCard({ company }: { company: Company }) {
 
     const handleCardClick = (company: Company) => {
         if (company.source === 'scraped') {
-            navigate('/jobs');
+            navigate(`/jobs?company=${encodeURIComponent(company.companyName)}`);
         } else if (company.careersUrl) {
             window.open(company.careersUrl, '_blank', 'noopener,noreferrer');
         } else if (company.domain) {
