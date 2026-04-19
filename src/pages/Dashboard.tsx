@@ -9,7 +9,7 @@ import { BRAND } from '../theme/brand';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useSearchParams } from 'react-router-dom';
 import { relativeDate } from '../utils/date';
-import { parseAllLocations, getPrimaryLocation, normalizeWorkplace, compactSalary } from '../utils/job';
+import {  normalizeWorkplace, compactSalary,getDisplayLocation  } from '../utils/job';
 import { useJobFilters } from '../hooks/useJobFilters';
 
 export default function Dashboard() {
@@ -291,7 +291,7 @@ const companyParam = searchParams.get('company');
                           {job.JobTitle}
                         </p>
                         <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {job.Company} | {getPrimaryLocation(job, parseAllLocations(job))}
+                          {job.Company} | {getDisplayLocation(job)}
                         </p>
 
                         {(showWorkplaceBadge || salary) && (
@@ -338,7 +338,7 @@ const companyParam = searchParams.get('company');
                     style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-surface)', padding: '14px 12px', textAlign: 'left', width: '100%' }}
                   >
                     <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3 }}>{job.JobTitle}</p>
-                    <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 4 }}>{job.Company} · {getPrimaryLocation(job, parseAllLocations(job))}</p>
+                    <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 4 }}>{job.Company} · {getDisplayLocation(job)}</p>
                     <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: 3 }}>{relativeDate(job.PostedDate || job.scrapedAt)}</p>
                   </button>
                 ))}

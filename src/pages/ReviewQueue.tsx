@@ -5,7 +5,7 @@ import FormattedDescription from '../components/FormattedDescription';
 import MobileDetailOverlay from '../components/MobileDetailOverlay';
 import { Badge, Button, Container, EmptyState, PageHeader } from '../components/ui';
 import { formatPostedDate } from '../utils/date';
-import { parseAllLocations, getPrimaryLocation, isMeaningful, detailedSalary } from '../utils/job';
+import {  isMeaningful, detailedSalary, getDisplayLocation } from '../utils/job';
 import { useSplitView } from '../hooks/useSplitView';
 
 function isCleanDepartment(value?: string | null) {
@@ -38,6 +38,109 @@ function compactDomain(value?: string) {
   if (value === 'Technical' || value === 'Non-Technical') return value;
   return 'Unclear';
 }
+
+// ── Editable Location Component ─────────────────────────────────
+
+function EditableLocation({ job, onSave }: { job: IJob; onSave: (updated: IJob) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(job.Location || '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setValue(job.Location || '');
+  }, [job._id, job.Location]);
+
+  const handleSave = async () => {
+    if (!value.trim() || value.trim() === job.Location) {
+      setEditing(false);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/jobs/admin/update/${job._id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ Location: value.trim() })
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        onSave(updated);
+        setEditing(false);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <span
+        onClick={() => setEditing(true)}
+        title="Click to edit location"
+        style={{
+          fontSize: '0.82rem', color: 'var(--text-muted)',
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          cursor: 'pointer', borderBottom: '1px dashed var(--border)',
+          minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis',
+        }}
+      >
+        <MapPin size={12} /> {job.Location || 'No location'}
+      </span>
+    );
+  }
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <MapPin size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+      <input
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') handleSave();
+          if (e.key === 'Escape') { setValue(job.Location || ''); setEditing(false); }
+        }}
+        autoFocus
+        style={{
+          fontSize: '0.82rem', color: 'var(--text-primary)',
+          background: 'var(--bg-surface-2)', border: '1px solid var(--acid)',
+          borderRadius: 4, padding: '2px 6px', outline: 'none',
+          fontFamily: 'inherit', width: 200,
+        }}
+      />
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        style={{
+          fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px',
+          background: 'var(--acid)', color: '#000', border: 'none',
+          borderRadius: 4, cursor: 'pointer',
+        }}
+      >
+        {saving ? '...' : 'Save'}
+      </button>
+      <button
+        onClick={() => { setValue(job.Location || ''); setEditing(false); }}
+        style={{
+          fontSize: '0.7rem', padding: '2px 6px',
+          background: 'transparent', color: 'var(--text-muted)',
+          border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer',
+        }}
+      >
+        Cancel
+      </button>
+    </span>
+  );
+}
+
+// ── Main Component ──────────────────────────────────────────────
 
 export default function ReviewQueue() {
   const [jobs, setJobs] = useState<IJob[]>([]);
@@ -103,6 +206,10 @@ export default function ReviewQueue() {
     });
   };
 
+  const handleUpdateJob = (updated: IJob) => {
+    setJobs(prev => prev.map(j => j._id === updated._id ? updated : j));
+  };
+
   const handleReanalyzeAll = async () => {
     if (!window.confirm('Re-analyze all non-manually-reviewed jobs now? This may take several minutes.')) return;
 
@@ -133,8 +240,7 @@ export default function ReviewQueue() {
   const renderJobListItem = (job: IJob, onClick: () => void) => {
     const selected = job._id === selectedJobId;
     const confidence = normalizeConfidence(job.ConfidenceScore);
-    const allLocations = parseAllLocations(job);
-    const primaryLocation = getPrimaryLocation(job, allLocations);
+    const displayLocation = getDisplayLocation(job);
 
     return (
       <button
@@ -157,7 +263,7 @@ export default function ReviewQueue() {
           {job.JobTitle}
         </p>
         <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {job.Company} | {primaryLocation}
+          {job.Company} | {displayLocation}
         </p>
         <div className="flex flex-wrap gap-2" style={{ marginTop: 8 }}>
           <Badge variant={confidenceVariant(confidence)} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{confidenceLabel(confidence)}</Badge>
@@ -217,7 +323,7 @@ export default function ReviewQueue() {
               <section style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface)', minHeight: 0, height: desktopSplitHeight, overflowY: 'auto', padding: 16 }}>
                 {!selectedJob
                   ? <EmptyState title="Select a job to review" body="Pick a pending role from the left panel." />
-                  : <ReviewDetail job={selectedJob} onDecision={handleDecision} />}
+                  : <ReviewDetail job={selectedJob} onDecision={handleDecision} onUpdateJob={handleUpdateJob} />}
               </section>
             </div>
 
@@ -229,7 +335,7 @@ export default function ReviewQueue() {
             {/* Mobile overlay */}
             {mobileDetailOpen && selectedJob && (
               <MobileDetailOverlay onBack={closeMobileDetail} backLabel="Back to queue">
-                <ReviewDetail job={selectedJob} onDecision={handleDecision} />
+                <ReviewDetail job={selectedJob} onDecision={handleDecision} onUpdateJob={handleUpdateJob} />
               </MobileDetailOverlay>
             )}
           </>
@@ -239,11 +345,15 @@ export default function ReviewQueue() {
   );
 }
 
-function ReviewDetail({ job, onDecision }: { job: IJob; onDecision: (id: string, decision: 'accept' | 'reject') => void }) {
+// ── Review Detail ───────────────────────────────────────────────
+
+function ReviewDetail({ job, onDecision, onUpdateJob }: { 
+  job: IJob; 
+  onDecision: (id: string, decision: 'accept' | 'reject') => void;
+  onUpdateJob: (updated: IJob) => void;
+}) {
   const evidence = (job as any)?.Evidence?.german_reason as string | undefined;
 
-  const allLocations = parseAllLocations(job);
-  const primaryLocation = getPrimaryLocation(job, allLocations);
   const salary = detailedSalary(job);
   const confidence = normalizeConfidence(job.ConfidenceScore);
 
@@ -261,9 +371,7 @@ function ReviewDetail({ job, onDecision }: { job: IJob; onDecision: (id: string,
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 10 }}>
           <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>{job.Company}</span>
           <span style={{ color: 'var(--text-muted)' }}>|</span>
-          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            <MapPin size={12} /> {primaryLocation}
-          </span>
+          <EditableLocation job={job} onSave={onUpdateJob} />
           <span style={{ color: 'var(--text-muted)' }}>|</span>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Posted: {formatPostedDate(job.PostedDate || job.scrapedAt)}</span>
         </div>

@@ -3,7 +3,7 @@ import { ExternalLink, MapPin } from 'lucide-react';
 import type { IJob } from '../types';
 import FormattedDescription from './FormattedDescription';
 import { formatPostedDate } from '../utils/date';
-import { parseAllLocations, getPrimaryLocation, isMeaningful, normalizeWorkplace, detailedSalary } from '../utils/job';
+import { parseAllLocations,isMeaningful, normalizeWorkplace, detailedSalary ,getDisplayLocation} from '../utils/job';
 import { Badge, Button } from './ui';
 
 interface Props {
@@ -16,7 +16,7 @@ export default function PublicJobDetail({ job, onTrackApplyClick }: Props) {
   const [trackingApply, setTrackingApply] = useState(false);
 
   const allLocations = parseAllLocations(job);
-  const primaryLocation = getPrimaryLocation(job, allLocations);
+ const primaryLocation = getDisplayLocation(job);
   const extraLocations = allLocations.slice(1);
   const salary = detailedSalary(job);
   const normalizedWorkplace = normalizeWorkplace(job.WorkplaceType);
