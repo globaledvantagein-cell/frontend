@@ -8,6 +8,7 @@ export interface IJob {
   DirectApplyURL: string | null;
   PostedDate: string | null;
   Description: string;
+  DescriptionHtml?: string | null;
   GermanRequired?: boolean;
   Department: string;
   WorkplaceType: string;

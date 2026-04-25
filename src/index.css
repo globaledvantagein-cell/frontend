@@ -353,6 +353,61 @@ body::before {
   animation-delay: .34s
 }
 
+/* ── Sanitized HTML job description ───────────────── */
+/* Applied when DescriptionHtml is available from the scraper.           */
+/* All structural tags are kept; presentational tags were stripped at     */
+/* ingest time by SanitizeHtml() in utils.js.                            */
+.job-description-html {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.job-description-html p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.75;
+  margin-bottom: 10px;
+}
+.job-description-html ul,
+.job-description-html ol {
+  margin: 0 0 12px 8px;
+  padding-left: 14px;
+  border-left: 2px solid var(--border);
+  display: grid;
+  gap: 6px;
+}
+.job-description-html li {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+.job-description-html h1,
+.job-description-html h2,
+.job-description-html h3,
+.job-description-html h4,
+.job-description-html h5,
+.job-description-html h6 {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 20px 0 10px;
+}
+.job-description-html h1:first-child,
+.job-description-html h2:first-child,
+.job-description-html h3:first-child,
+.job-description-html h4:first-child {
+  margin-top: 0;
+}
+.job-description-html strong,
+.job-description-html b {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.job-description-html em,
+.job-description-html i {
+  font-style: italic;
+}
+
 /* ── Skeleton ─────────────────────────────────────── */
 .skeleton {
   background: linear-gradient(90deg, var(--paper2) 25%, var(--surface-solid) 50%, var(--paper2) 75%);
