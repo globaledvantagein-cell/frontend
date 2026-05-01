@@ -3,30 +3,56 @@ import { ExternalLink, MapPin } from 'lucide-react';
 import type { IJob } from '../types';
 import FormattedDescription from './FormattedDescription';
 import { formatPostedDate } from '../utils/date';
-import { parseAllLocations,isMeaningful, normalizeWorkplace, detailedSalary ,getDisplayLocation} from '../utils/job';
+import { parseAllLocations, isMeaningful, normalizeWorkplace, detailedSalary, getDisplayLocation } from '../utils/job';
 import { Badge, Button } from './ui';
+import { useAuth } from '../context/AuthContext';
+import { apiPost } from '../utils/jobApi';
 
 interface Props {
   job: IJob;
-  onTrackApplyClick: (jobId: string) => Promise<void>;
+  /** Patches the in-memory list when applyClicks changes */
+  onApplyTracked?: (jobId: string, applyClicks: number) => void;
+  /** Called when an unauthenticated user clicks Apply — show the SignupGate */
+  onAuthRequired?: () => void;
 }
 
-export default function PublicJobDetail({ job, onTrackApplyClick }: Props) {
+export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }: Props) {
   const [showAllLocations, setShowAllLocations] = useState(false);
   const [trackingApply, setTrackingApply] = useState(false);
+  const { isAuthenticated } = useAuth();
 
   const allLocations = parseAllLocations(job);
- const primaryLocation = getDisplayLocation(job);
+  const primaryLocation = getDisplayLocation(job);
   const extraLocations = allLocations.slice(1);
   const salary = detailedSalary(job);
   const normalizedWorkplace = normalizeWorkplace(job.WorkplaceType);
   const showWorkplaceBadge = normalizedWorkplace === 'Remote' || normalizedWorkplace === 'Hybrid';
 
+  // Apply requires auth — even if the user got the full job (under view limit),
+  // applying is the highest-value action and is always gated.
   const handleApplyNow = async () => {
-    window.open(job.ApplicationURL, '_blank', 'noopener,noreferrer');
+    if (!isAuthenticated) {
+      onAuthRequired?.();
+      return;
+    }
+
     try {
       setTrackingApply(true);
-      await onTrackApplyClick(job._id);
+      // Backend returns the real ApplicationURL since the list endpoint
+      // strips it. Open AFTER we get the URL back.
+      const result = await apiPost<{
+        applyClicks: number;
+        applicationUrl: string;
+        directApplyUrl: string | null;
+      }>(`/api/jobs/${job._id}/apply-click`, {});
+
+      const target = result.directApplyUrl || result.applicationUrl;
+      if (target) {
+        window.open(target, '_blank', 'noopener,noreferrer');
+      }
+      onApplyTracked?.(job._id, result.applyClicks ?? 0);
+    } catch (err) {
+      console.error(err);
     } finally {
       setTrackingApply(false);
     }
@@ -84,7 +110,7 @@ export default function PublicJobDetail({ job, onTrackApplyClick }: Props) {
         <div className="flex items-center justify-between flex-wrap gap-2" style={{ marginTop: 10 }}>
           <div className="flex items-center gap-2 flex-wrap">
             <Button size="sm" onClick={handleApplyNow} loading={trackingApply}>
-                Apply Now <ExternalLink size={12} />
+              {isAuthenticated ? 'Apply Now' : 'Sign up to apply'} <ExternalLink size={12} />
             </Button>
             {job.GermanRequired === false && <Badge variant="acid">🇬🇧 English Only</Badge>}
           </div>

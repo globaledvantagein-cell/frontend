@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import MobileDetailOverlay from '../components/MobileDetailOverlay';
 import type { IJob } from '../types';
 import PublicJobDetail from '../components/PublicJobDetail';
-import { getVisitorId } from '../utils/visitorId';
+import SignupGate from '../components/SignupGate';
 import { Badge, Button, Container, EmptyState } from '../components/ui';
 import { DashboardFilterBar, MobileFilterSheet } from '../components/DashboardFilterBar';
 import { BRAND } from '../theme/brand';
@@ -11,6 +11,7 @@ import { useSearchParams } from 'react-router-dom';
 import { relativeDate } from '../utils/date';
 import { normalizeWorkplace, compactSalary, getDisplayLocation } from '../utils/job';
 import { useJobFilters } from '../hooks/useJobFilters';
+import { useGatedJobDetail } from '../hooks/useGatedJobDetail';
 
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
@@ -47,8 +48,8 @@ export default function Dashboard() {
   const heroRef            = useRef<HTMLDivElement | null>(null);
   const filtersRef         = useRef<HTMLDivElement | null>(null);
   const splitViewRef       = useRef<HTMLDivElement | null>(null);
-  const listPanelRef       = useRef<HTMLDivElement | null>(null);   // scrollable left panel
-  const sentinelRef        = useRef<HTMLDivElement | null>(null);   // scroll trigger target
+  const listPanelRef       = useRef<HTMLDivElement | null>(null);
+  const sentinelRef        = useRef<HTMLDivElement | null>(null);
   const desktopJobRefs     = useRef<Record<string, HTMLButtonElement | null>>({});
   const handledDeepLinkRef = useRef<string | null>(null);
   const savedScrollRef     = useRef(0);
@@ -59,8 +60,6 @@ export default function Dashboard() {
   }, []);
 
   // ── Auto-select first job when the list changes ────────────────────────────
-  // When filters change, jobs is cleared → selectedJobId is cleared.
-  // When the first batch arrives, auto-select the first result.
   useEffect(() => {
     if (jobs.length === 0) {
       setSelectedJobId(null);
@@ -97,7 +96,7 @@ export default function Dashboard() {
     requestAnimationFrame(() => {
       node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
-  }, [selectedJobId, isMobile]); // intentionally excludes jobs.length — appending more jobs must NOT re-trigger scroll
+  }, [selectedJobId, isMobile]);
 
   // ── Split-view height calculation ──────────────────────────────────────────
   useEffect(() => {
@@ -128,7 +127,7 @@ export default function Dashboard() {
     if (!isMobile) setFilterSheetOpen(false);
   }, [isMobile]);
 
-  // ── Infinite scroll — IntersectionObserver on sentinel div ────────────────
+  // ── Infinite scroll ───────────────────────────────────────────────────────
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel || loading || !hasMore) return;
@@ -138,10 +137,8 @@ export default function Dashboard() {
         if (entry.isIntersecting) loadMore();
       },
       {
-        // Desktop: trigger relative to the scrollable list panel.
-        // Mobile:  trigger relative to the viewport (root: null).
         root:       isMobile ? null : listPanelRef.current,
-        rootMargin: '200px', // start loading 200px before the sentinel enters view
+        rootMargin: '200px',
         threshold:  0,
       },
     );
@@ -150,32 +147,89 @@ export default function Dashboard() {
     return () => observer.disconnect();
   }, [loading, hasMore, loadingMore, loadMore, isMobile]);
 
-  // ── Derived ────────────────────────────────────────────────────────────────
-  const selectedJob = useMemo(
+  // ── Selected job (teaser from list) ────────────────────────────────────────
+  // Note: this is the LIST-level teaser — title, company, location, badges.
+  // The full job (description + apply URL) is fetched separately via the
+  // gated endpoint below.
+  const selectedTeaser = useMemo(
     () => (selectedJobId ? jobs.find(job => job._id === selectedJobId) ?? null : null),
     [jobs, selectedJobId],
   );
 
+  // ── Gated detail fetch ─────────────────────────────────────────────────────
+  // Fires whenever selectedJobId changes. Returns either the full job (under
+  // limit / authenticated) or { gated: true, teaser } (over limit, anon).
+  const {
+    job: fullJob,
+    gated,
+    teaser: gatedTeaser,
+    loading: detailLoading,
+    refetch: refetchDetail,
+  } = useGatedJobDetail(selectedJobId, selectedTeaser);
+
   const desktopSplitHeight = splitHeight ? `${splitHeight}px` : undefined;
 
-  // ── Apply-click tracking ───────────────────────────────────────────────────
-  const trackApplyClick = async (jobId: string) => {
-    try {
-      const res = await fetch(`/api/jobs/${jobId}/apply-click`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ visitorId: getVisitorId() }),
-      });
-      const payload = await res.json();
-      if (!res.ok) return;
-      // Patch only the affected job in-memory — no refetch needed
-      updateJob(jobId, { applyClicks: payload.applyClicks ?? 0 });
-    } catch (err) {
-      console.error(err);
-    }
+  // ── Apply-click in-memory patch ────────────────────────────────────────────
+  const handleApplyTracked = (jobId: string, applyClicks: number) => {
+    updateJob(jobId, { applyClicks });
   };
 
-  // ── Job card renderer (shared between desktop and mobile lists) ────────────
+  // ── Force-gate state ───────────────────────────────────────────────────────
+  // Set when an anonymous user clicks "Apply" on a job they CAN see (under
+  // the limit). Apply requires auth, so we surface the gate immediately
+  // even though the job's description is already on screen.
+  const [forceGate, setForceGate] = useState(false);
+  useEffect(() => { setForceGate(false); }, [selectedJobId]);
+
+  // ── Detail panel renderer — shared between desktop and mobile ──────────────
+  const renderRightPanel = () => {
+    if (!selectedJobId) {
+      return <EmptyState title="Select a job from the list to view details" body="Pick any role on the left panel." />;
+    }
+
+    // Force-gate (apply was clicked while anonymous) takes precedence.
+    if (forceGate) {
+      return (
+        <SignupGate
+          teaser={selectedTeaser || undefined}
+          onAuthSuccess={() => { setForceGate(false); refetchDetail(); }}
+        />
+      );
+    }
+
+    if (detailLoading && !fullJob && !gated) {
+      return (
+        <div className="flex flex-col gap-3" style={{ padding: 4 }}>
+          <div className="skeleton" style={{ height: 24, width: '60%', borderRadius: 6 }} />
+          <div className="skeleton" style={{ height: 14, width: '40%', borderRadius: 4 }} />
+          <div className="skeleton" style={{ height: 120, marginTop: 8, borderRadius: 8 }} />
+        </div>
+      );
+    }
+
+    if (gated) {
+      return (
+        <SignupGate
+          teaser={gatedTeaser || selectedTeaser || undefined}
+          onAuthSuccess={refetchDetail}
+        />
+      );
+    }
+
+    if (fullJob) {
+      return (
+        <PublicJobDetail
+          job={fullJob}
+          onApplyTracked={handleApplyTracked}
+          onAuthRequired={() => setForceGate(true)}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  // ── Job card renderer ──────────────────────────────────────────────────────
   const renderJobCard = (job: IJob, forMobile: boolean) => {
     const selected      = selectedJobId === job._id;
     const salary        = compactSalary(job);
@@ -232,10 +286,9 @@ export default function Dashboard() {
     );
   };
 
-  // ── Load-more indicator rendered at the bottom of both list variants ───────
+  // ── Load-more indicator ────────────────────────────────────────────────────
   const loadMoreIndicator = (
     <>
-      {/* Invisible sentinel — triggers IntersectionObserver as a bonus auto-load */}
       <div ref={sentinelRef} style={{ height: 1 }} aria-hidden="true" />
 
       {hasMore && (
@@ -298,7 +351,7 @@ export default function Dashboard() {
     </>
   );
 
-  // ── Skeleton cards (shown while page 1 is loading) ─────────────────────────
+  // ── Skeleton list ──────────────────────────────────────────────────────────
   const skeletons = (
     <div className="flex flex-col gap-3" style={{ padding: 12 }}>
       {[1, 2, 3, 4, 5].map(i => (
@@ -356,7 +409,6 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Mobile filter bottom sheet */}
         {filterSheetOpen && isMobile && (
           <MobileFilterSheet
             filters={filters}
@@ -371,13 +423,12 @@ export default function Dashboard() {
           />
         )}
 
-        {/* ── Desktop / tablet split view ── */}
+        {/* Desktop / tablet split view */}
         <div
           ref={splitViewRef}
           className="split-grid"
           style={{ gap: 14, flex: 1, minHeight: 0, height: desktopSplitHeight }}
         >
-          {/* Left panel — scrollable job list */}
           <section
             ref={listPanelRef}
             style={{
@@ -408,7 +459,6 @@ export default function Dashboard() {
             )}
           </section>
 
-          {/* Right panel — job detail */}
           <section
             style={{
               border: '1px solid var(--border)', borderRadius: 12,
@@ -416,14 +466,11 @@ export default function Dashboard() {
               minHeight: 0, height: desktopSplitHeight, overflowY: 'auto',
             }}
           >
-            {!selectedJob
-              ? <EmptyState title="Select a job from the list to view details" body="Pick any role on the left panel." />
-              : <PublicJobDetail job={selectedJob} onTrackApplyClick={trackApplyClick} />
-            }
+            {renderRightPanel()}
           </section>
         </div>
 
-        {/* ── Mobile-only job list ── */}
+        {/* Mobile-only list */}
         <div className="mobile-list-only flex flex-col gap-2">
           {loading ? (
             <div className="flex flex-col gap-3">
@@ -448,7 +495,7 @@ export default function Dashboard() {
         </div>
 
         {/* Mobile detail overlay */}
-        {mobileDetailOpen && selectedJob && (
+        {mobileDetailOpen && selectedJobId && (
           <MobileDetailOverlay
             onBack={() => {
               setMobileDetailOpen(false);
@@ -456,7 +503,7 @@ export default function Dashboard() {
             }}
             backLabel="Back to results"
           >
-            <PublicJobDetail job={selectedJob} onTrackApplyClick={trackApplyClick} />
+            {renderRightPanel()}
           </MobileDetailOverlay>
         )}
       </Container>
