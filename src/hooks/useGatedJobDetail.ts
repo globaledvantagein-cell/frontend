@@ -10,24 +10,23 @@ interface GatedTeaser {
 }
 
 interface Result {
-  job: IJob | null;          // full job, or null if gated/loading/error
-  gated: boolean;             // true → show SignupGate
-  teaser: GatedTeaser | null; // populated when gated
+  job: IJob | null;
+  gated: boolean;
+  teaser: GatedTeaser | null;
   loading: boolean;
   error: string | null;
-  refetch: () => void;        // call after auth completes to retry
+  refetch: () => void;
 }
 
 /**
  * Fetches a job's full detail through the gated endpoint.
  *
- * Backend returns either:
- *   { gated: false, job: <full job> }      → show PublicJobDetail
- *   { gated: true, teaser: <basic info> }  → show SignupGate
+ * Backend returns one of:
+ *   { gated: false, job: <full job> }     → show PublicJobDetail
+ *   { gated: true, teaser: <basics> }     → show SignupGate
  *
- * The list endpoint already gives us the teaser data, so passing
- * `fallbackTeaser` lets us show a meaningful "you were viewing" preview
- * inside the gate without an extra round trip.
+ * `fallbackTeaser` is the list-level data we already have — used for the
+ * "you were viewing" preview inside the gate without an extra round trip.
  */
 export function useGatedJobDetail(jobId: string | null, fallbackTeaser?: GatedTeaser | null) {
   const [state, setState] = useState<Omit<Result, 'refetch'>>({

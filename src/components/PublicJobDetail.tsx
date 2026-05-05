@@ -28,7 +28,7 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
   const normalizedWorkplace = normalizeWorkplace(job.WorkplaceType);
   const showWorkplaceBadge = normalizedWorkplace === 'Remote' || normalizedWorkplace === 'Hybrid';
 
-  // Apply requires auth — even if the user got the full job (under view limit),
+  // Apply requires auth — even if the user is under the view limit,
   // applying is the highest-value action and is always gated.
   const handleApplyNow = async () => {
     if (!isAuthenticated) {
@@ -110,7 +110,7 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
         <div className="flex items-center justify-between flex-wrap gap-2" style={{ marginTop: 10 }}>
           <div className="flex items-center gap-2 flex-wrap">
             <Button size="sm" onClick={handleApplyNow} loading={trackingApply}>
-              {isAuthenticated ? 'Apply Now' : 'Sign up to apply'} <ExternalLink size={12} />
+              {isAuthenticated ? 'Apply Now' : 'Sign in to apply'} <ExternalLink size={12} />
             </Button>
             {job.GermanRequired === false && <Badge variant="acid">🇬🇧 English Only</Badge>}
           </div>
@@ -124,7 +124,6 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
       <div style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface)', padding: 14 }}>
         <FormattedDescription description={job.Description || ''} />
       </div>
-
     </div>
   );
 }

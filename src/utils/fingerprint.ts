@@ -1,12 +1,12 @@
 // Lightweight browser fingerprint for the anti-bypass signup gate.
 //
 // Combines: canvas hash, screen size, color depth, timezone, language,
-// platform, hardware concurrency, user agent. Hashed with a small inline
-// FNV-1a so we don't need a crypto dependency.
+// platform, hardware concurrency, user agent. Hashed via inline FNV-1a
+// so we don't need a crypto dependency.
 //
-// This is NOT cryptographically strong identity — it's just enough to
-// recognize the same browser/device after a cookie clear. Combined
-// server-side with vid + IP for the composite identity check.
+// This is NOT cryptographically strong identity — just enough to recognize
+// the same browser/device after a cookie clear. Combined server-side with
+// vid + IP for the composite identity check.
 
 let cached: string | null = null;
 
@@ -28,7 +28,7 @@ function getCanvasHash(): string {
     const ctx = canvas.getContext('2d');
     if (!ctx) return 'no-ctx';
 
-    // The exact rendering output varies per GPU/font stack — that's the signal.
+    // Exact rendering output varies per GPU/font stack — that's the signal.
     ctx.textBaseline = 'top';
     ctx.font = '14px "Arial"';
     ctx.fillStyle = '#f60';

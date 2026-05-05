@@ -29,7 +29,7 @@ export async function apiGet<T = any>(path: string): Promise<T> {
     credentials: 'include',
     headers: authHeaders(),
   });
-  // Don't throw on 200 with a `gated: true` body — the caller decides.
+  // 200 with `gated: true` is valid — caller decides what to do
   if (!res.ok && res.status !== 200) {
     throw new Error(`Request failed: ${res.status}`);
   }

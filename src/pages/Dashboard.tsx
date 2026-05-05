@@ -18,7 +18,6 @@ export default function Dashboard() {
   const companyParam  = searchParams.get('company');
   const deepLinkedJobId = searchParams.get('id');
 
-  // ── Server-driven hook — owns all jobs state ───────────────────────────────
   const {
     filters,
     setFilters,
@@ -35,16 +34,14 @@ export default function Dashboard() {
     updateJob,
   } = useJobFilters(companyParam || undefined);
 
-  // ── UI state ───────────────────────────────────────────────────────────────
   const [selectedJobId,    setSelectedJobId]    = useState<string | null>(null);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [splitHeight,      setSplitHeight]      = useState<number | null>(null);
   const [filterSheetOpen,  setFilterSheetOpen]  = useState(false);
-  const [openDropdown,     setOpenDropdown]      = useState<string | null>(null);
+  const [openDropdown,     setOpenDropdown]     = useState<string | null>(null);
 
   const isMobile = useMediaQuery('(max-width: 767px)');
 
-  // ── Refs ───────────────────────────────────────────────────────────────────
   const heroRef            = useRef<HTMLDivElement | null>(null);
   const filtersRef         = useRef<HTMLDivElement | null>(null);
   const splitViewRef       = useRef<HTMLDivElement | null>(null);
@@ -54,12 +51,9 @@ export default function Dashboard() {
   const handledDeepLinkRef = useRef<string | null>(null);
   const savedScrollRef     = useRef(0);
 
-  // ── Page title ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    document.title = `${BRAND.appName} Jobs`;
-  }, []);
+  useEffect(() => { document.title = `${BRAND.appName} Jobs`; }, []);
 
-  // ── Auto-select first job when the list changes ────────────────────────────
+  // Auto-select first job
   useEffect(() => {
     if (jobs.length === 0) {
       setSelectedJobId(null);
@@ -73,22 +67,20 @@ export default function Dashboard() {
     }
   }, [jobs, selectedJobId, isMobile]);
 
-  // ── Deep link: auto-open a specific job from ?id= ─────────────────────────
+  // Deep link
   useEffect(() => {
     if (!deepLinkedJobId || handledDeepLinkRef.current === deepLinkedJobId) return;
     const target = jobs.find(job => job._id === deepLinkedJobId);
     if (!target) return;
-
     setSelectedJobId(target._id);
     handledDeepLinkRef.current = deepLinkedJobId;
-
     if (isMobile) {
       savedScrollRef.current = window.scrollY;
       setMobileDetailOpen(true);
     }
   }, [jobs, deepLinkedJobId, isMobile]);
 
-  // ── Auto-scroll to selected job card on desktop ────────────────────────────
+  // Auto-scroll to selected card
   useEffect(() => {
     if (!selectedJobId || isMobile) return;
     const node = desktopJobRefs.current[selectedJobId];
@@ -98,7 +90,7 @@ export default function Dashboard() {
     });
   }, [selectedJobId, isMobile]);
 
-  // ── Split-view height calculation ──────────────────────────────────────────
+  // Split-view height
   useEffect(() => {
     const updateSplitHeight = () => {
       if (window.innerWidth < 768 || !splitViewRef.current) {
@@ -108,57 +100,38 @@ export default function Dashboard() {
       const top = splitViewRef.current.getBoundingClientRect().top;
       setSplitHeight(Math.max(window.innerHeight - top - 16, 320));
     };
-
     const observer = new ResizeObserver(() => updateSplitHeight());
-    const nodes = [heroRef.current, filtersRef.current, splitViewRef.current]
-      .filter(Boolean) as Element[];
+    const nodes = [heroRef.current, filtersRef.current, splitViewRef.current].filter(Boolean) as Element[];
     nodes.forEach(n => observer.observe(n));
     window.addEventListener('resize', updateSplitHeight);
     updateSplitHeight();
-
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', updateSplitHeight);
     };
   }, [loading]);
 
-  // ── Close filter sheet when viewport grows past mobile ────────────────────
-  useEffect(() => {
-    if (!isMobile) setFilterSheetOpen(false);
-  }, [isMobile]);
+  useEffect(() => { if (!isMobile) setFilterSheetOpen(false); }, [isMobile]);
 
-  // ── Infinite scroll ───────────────────────────────────────────────────────
+  // Infinite scroll
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel || loading || !hasMore) return;
-
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) loadMore();
-      },
-      {
-        root:       isMobile ? null : listPanelRef.current,
-        rootMargin: '200px',
-        threshold:  0,
-      },
+      ([entry]) => { if (entry.isIntersecting) loadMore(); },
+      { root: isMobile ? null : listPanelRef.current, rootMargin: '200px', threshold: 0 },
     );
-
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [loading, hasMore, loadingMore, loadMore, isMobile]);
 
-  // ── Selected job (teaser from list) ────────────────────────────────────────
-  // Note: this is the LIST-level teaser — title, company, location, badges.
-  // The full job (description + apply URL) is fetched separately via the
-  // gated endpoint below.
+  // Selected job teaser (from list)
   const selectedTeaser = useMemo(
     () => (selectedJobId ? jobs.find(job => job._id === selectedJobId) ?? null : null),
     [jobs, selectedJobId],
   );
 
-  // ── Gated detail fetch ─────────────────────────────────────────────────────
-  // Fires whenever selectedJobId changes. Returns either the full job (under
-  // limit / authenticated) or { gated: true, teaser } (over limit, anon).
+  // Gated detail fetch
   const {
     job: fullJob,
     gated,
@@ -169,25 +142,18 @@ export default function Dashboard() {
 
   const desktopSplitHeight = splitHeight ? `${splitHeight}px` : undefined;
 
-  // ── Apply-click in-memory patch ────────────────────────────────────────────
   const handleApplyTracked = (jobId: string, applyClicks: number) => {
     updateJob(jobId, { applyClicks });
   };
 
-  // ── Force-gate state ───────────────────────────────────────────────────────
-  // Set when an anonymous user clicks "Apply" on a job they CAN see (under
-  // the limit). Apply requires auth, so we surface the gate immediately
-  // even though the job's description is already on screen.
+  // Force-gate when an anonymous user clicks Apply on a job they CAN see
   const [forceGate, setForceGate] = useState(false);
   useEffect(() => { setForceGate(false); }, [selectedJobId]);
 
-  // ── Detail panel renderer — shared between desktop and mobile ──────────────
   const renderRightPanel = () => {
     if (!selectedJobId) {
       return <EmptyState title="Select a job from the list to view details" body="Pick any role on the left panel." />;
     }
-
-    // Force-gate (apply was clicked while anonymous) takes precedence.
     if (forceGate) {
       return (
         <SignupGate
@@ -196,7 +162,6 @@ export default function Dashboard() {
         />
       );
     }
-
     if (detailLoading && !fullJob && !gated) {
       return (
         <div className="flex flex-col gap-3" style={{ padding: 4 }}>
@@ -206,7 +171,6 @@ export default function Dashboard() {
         </div>
       );
     }
-
     if (gated) {
       return (
         <SignupGate
@@ -215,7 +179,6 @@ export default function Dashboard() {
         />
       );
     }
-
     if (fullJob) {
       return (
         <PublicJobDetail
@@ -225,11 +188,9 @@ export default function Dashboard() {
         />
       );
     }
-
     return null;
   };
 
-  // ── Job card renderer ──────────────────────────────────────────────────────
   const renderJobCard = (job: IJob, forMobile: boolean) => {
     const selected      = selectedJobId === job._id;
     const salary        = compactSalary(job);
@@ -286,63 +247,28 @@ export default function Dashboard() {
     );
   };
 
-  // ── Load-more indicator ────────────────────────────────────────────────────
   const loadMoreIndicator = (
     <>
       <div ref={sentinelRef} style={{ height: 1 }} aria-hidden="true" />
-
       {hasMore && (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
           <button
             onClick={loadMore}
             disabled={loadingMore}
             style={{
-              height: 36,
-              padding: '0 20px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--bg-surface-2)',
+              height: 36, padding: '0 20px', borderRadius: 8,
+              border: '1px solid var(--border)', background: 'var(--bg-surface-2)',
               color: loadingMore ? 'var(--text-muted)' : 'var(--text-secondary)',
-              fontSize: '0.82rem',
-              fontWeight: 600,
+              fontSize: '0.82rem', fontWeight: 600,
               cursor: loadingMore ? 'not-allowed' : 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
+              display: 'inline-flex', alignItems: 'center', gap: 8,
               fontFamily: 'inherit',
-              transition: 'border-color 0.2s, color 0.2s',
-            }}
-            onMouseEnter={e => {
-              if (!loadingMore) {
-                e.currentTarget.style.borderColor = 'var(--acid)';
-                e.currentTarget.style.color = 'var(--acid)';
-              }
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'var(--border)';
-              e.currentTarget.style.color = loadingMore ? 'var(--text-muted)' : 'var(--text-secondary)';
             }}
           >
-            {loadingMore ? (
-              <>
-                <div
-                  style={{
-                    width: 14, height: 14, borderRadius: '50%',
-                    border: '2px solid var(--border)',
-                    borderTopColor: 'var(--acid)',
-                    animation: 'spin 0.7s linear infinite',
-                    flexShrink: 0,
-                  }}
-                />
-                Loading…
-              </>
-            ) : (
-              `Load more jobs`
-            )}
+            {loadingMore ? 'Loading…' : 'Load more jobs'}
           </button>
         </div>
       )}
-
       {!hasMore && jobs.length > 0 && !loading && (
         <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', padding: '12px 0' }}>
           All {totalJobs} roles loaded
@@ -351,7 +277,6 @@ export default function Dashboard() {
     </>
   );
 
-  // ── Skeleton list ──────────────────────────────────────────────────────────
   const skeletons = (
     <div className="flex flex-col gap-3" style={{ padding: 12 }}>
       {[1, 2, 3, 4, 5].map(i => (
@@ -360,15 +285,9 @@ export default function Dashboard() {
     </div>
   );
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-
-      {/* Hero header */}
-      <div
-        ref={heroRef}
-        style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)', padding: '24px 0', flexShrink: 0 }}
-      >
+      <div ref={heroRef} style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)', padding: '24px 0', flexShrink: 0 }}>
         <Container>
           <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, textAlign: 'center' }}>
             {BRAND.appName}
@@ -376,59 +295,37 @@ export default function Dashboard() {
           <h1 style={{ fontSize: 'clamp(1.45rem, 3.8vw, 2rem)', fontFamily: "'Playfair Display',serif", color: 'var(--text-primary)', textAlign: 'center' }}>
             Browse English-Speaking Roles
           </h1>
-          <p
-            key={`${jobs.length}-${loading}`}
-            style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: 6, animation: 'fadeIn 0.3s ease both', textAlign: 'center' }}
-          >
-            {loading
-              ? 'Loading…'
-              : `${jobs.length} of ${totalJobs} roles available`}
+          <p key={`${jobs.length}-${loading}`} style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: 6, animation: 'fadeIn 0.3s ease both', textAlign: 'center' }}>
+            {loading ? 'Loading…' : `${jobs.length} of ${totalJobs} roles available`}
           </p>
         </Container>
       </div>
 
       <Container style={{ padding: '20px 24px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-
-        {/* Filter bar */}
-        <div
-          ref={filtersRef}
-          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 14, flexShrink: 0 }}
-        >
+        <div ref={filtersRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 14, flexShrink: 0 }}>
           <DashboardFilterBar
-            filters={filters}
-            setFilters={setFilters}
+            filters={filters} setFilters={setFilters}
             companyOptions={companyOptions}
-            filteredCount={jobs.length}
-            totalCount={totalJobs}
-            hasActiveFilters={hasActiveFilters}
-            activeFilterCount={activeFilterCount}
+            filteredCount={jobs.length} totalCount={totalJobs}
+            hasActiveFilters={hasActiveFilters} activeFilterCount={activeFilterCount}
             clearFilters={clearFilters}
-            openDropdown={openDropdown}
-            setOpenDropdown={setOpenDropdown}
+            openDropdown={openDropdown} setOpenDropdown={setOpenDropdown}
             onOpenFilterSheet={() => setFilterSheetOpen(true)}
           />
         </div>
 
         {filterSheetOpen && isMobile && (
           <MobileFilterSheet
-            filters={filters}
-            setFilters={setFilters}
+            filters={filters} setFilters={setFilters}
             companyOptions={companyOptions}
             filteredCount={jobs.length}
-            hasActiveFilters={hasActiveFilters}
-            clearFilters={clearFilters}
-            openDropdown={openDropdown}
-            setOpenDropdown={setOpenDropdown}
+            hasActiveFilters={hasActiveFilters} clearFilters={clearFilters}
+            openDropdown={openDropdown} setOpenDropdown={setOpenDropdown}
             onClose={() => setFilterSheetOpen(false)}
           />
         )}
 
-        {/* Desktop / tablet split view */}
-        <div
-          ref={splitViewRef}
-          className="split-grid"
-          style={{ gap: 14, flex: 1, minHeight: 0, height: desktopSplitHeight }}
-        >
+        <div ref={splitViewRef} className="split-grid" style={{ gap: 14, flex: 1, minHeight: 0, height: desktopSplitHeight }}>
           <section
             ref={listPanelRef}
             style={{
@@ -443,11 +340,7 @@ export default function Dashboard() {
                   <EmptyState
                     title="No jobs match your filters"
                     body={hasActiveFilters ? 'Try adjusting your search or filters.' : 'No roles are currently available.'}
-                    action={
-                      hasActiveFilters
-                        ? <Button variant="ghost" size="sm" onClick={clearFilters}>Clear all filters</Button>
-                        : undefined
-                    }
+                    action={hasActiveFilters ? <Button variant="ghost" size="sm" onClick={clearFilters}>Clear all filters</Button> : undefined}
                   />
                 ) : (
                   <>
@@ -470,7 +363,6 @@ export default function Dashboard() {
           </section>
         </div>
 
-        {/* Mobile-only list */}
         <div className="mobile-list-only flex flex-col gap-2">
           {loading ? (
             <div className="flex flex-col gap-3">
@@ -480,11 +372,7 @@ export default function Dashboard() {
             <EmptyState
               title="No jobs match your filters"
               body={hasActiveFilters ? 'Try adjusting your search or filters.' : 'No roles are currently available.'}
-              action={
-                hasActiveFilters
-                  ? <Button variant="ghost" size="sm" onClick={clearFilters}>Clear all filters</Button>
-                  : undefined
-              }
+              action={hasActiveFilters ? <Button variant="ghost" size="sm" onClick={clearFilters}>Clear all filters</Button> : undefined}
             />
           ) : (
             <>
@@ -494,7 +382,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Mobile detail overlay */}
         {mobileDetailOpen && selectedJobId && (
           <MobileDetailOverlay
             onBack={() => {
