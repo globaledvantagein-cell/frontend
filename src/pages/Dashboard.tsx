@@ -25,6 +25,7 @@ export default function Dashboard() {
     hasActiveFilters,
     activeFilterCount,
     companyOptions,
+    categoryOptions,
     jobs,
     totalJobs,
     hasMore,
@@ -306,6 +307,7 @@ export default function Dashboard() {
           <DashboardFilterBar
             filters={filters} setFilters={setFilters}
             companyOptions={companyOptions}
+            categoryOptions={categoryOptions}
             filteredCount={jobs.length} totalCount={totalJobs}
             hasActiveFilters={hasActiveFilters} activeFilterCount={activeFilterCount}
             clearFilters={clearFilters}
@@ -318,6 +320,7 @@ export default function Dashboard() {
           <MobileFilterSheet
             filters={filters} setFilters={setFilters}
             companyOptions={companyOptions}
+            categoryOptions={categoryOptions}
             filteredCount={jobs.length}
             hasActiveFilters={hasActiveFilters} clearFilters={clearFilters}
             openDropdown={openDropdown} setOpenDropdown={setOpenDropdown}

@@ -7,6 +7,7 @@
  *   - fetching page 1 whenever committed filters change
  *   - appending subsequent pages via `loadMore()`
  *   - company dropdown options fetched once from /api/jobs/company-names
+ *   - category dropdown options fetched once from /api/jobs/category-counts
  *   - an `updateJob()` helper so callers can patch individual jobs in-memory
  *     (e.g. after an apply-click count update) without refetching
  */
@@ -20,6 +21,7 @@ import {
   type CSSProperties,
 } from 'react';
 import type { IJob } from '../types';
+import { CATEGORY_LABELS, CATEGORY_ORDER } from '../utils/categorize';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -55,17 +57,19 @@ export type SortOption = 'newest' | 'company';
 export type DateFilter = 'All' | 'Today' | 'This Week' | 'This Month';
 
 export type FilterState = {
-  company: string[];
-  date:    DateFilter;
-  sort:    SortOption;
-  search:  string;
+  company:  string[];
+  category: string[];        // ← NEW (each value is a Category id)
+  date:     DateFilter;
+  sort:     SortOption;
+  search:   string;
 };
 
 export const DEFAULT_FILTERS: FilterState = {
-  company: [],
-  date:    'All',
-  sort:    'newest',
-  search:  '',
+  company:  [],
+  category: [],              // ← NEW
+  date:     'All',
+  sort:     'newest',
+  search:   '',
 };
 
 export interface FilterDropdownOption {
@@ -82,6 +86,9 @@ function buildSearchParams(filters: FilterState, page: number): URLSearchParams 
 
   // Multi-value company param: ?company=Stripe&company=Shopify
   filters.company.forEach(c => p.append('company', c));
+
+  // Multi-value category param: ?category=software&category=data
+  filters.category.forEach(c => p.append('category', c));
 
   if (filters.search.trim())     p.set('search', filters.search.trim());
   if (filters.date !== 'All')    p.set('date',   filters.date);
@@ -119,6 +126,16 @@ export function useJobFilters(initialCompany?: string) {
     { value: 'All', label: 'All' },
   ]);
 
+  // ── Category dropdown (fetched once) ──────────────────────────────────────
+  // Backend returns { software: 533, data: 92, ... } and we build the option
+  // list in canonical display order with counts in the label.
+  const [categoryOptions, setCategoryOptions] = useState<FilterDropdownOption[]>(
+    CATEGORY_ORDER.map(cat => ({
+      value: cat,
+      label: CATEGORY_LABELS[cat],
+    })),
+  );
+
   // ── Internal refs ─────────────────────────────────────────────────────────
   const abortRef       = useRef<AbortController | null>(null);
   const pageRef        = useRef(2);        // next page index for loadMore
@@ -143,6 +160,23 @@ export function useJobFilters(initialCompany?: string) {
         ]);
       })
       .catch(() => {}); // non-critical — filter still works without options
+  }, []);
+
+  // ── Fetch category counts once on mount ───────────────────────────────────
+  useEffect(() => {
+    fetch('/api/jobs/category-counts')
+      .then(r => r.json())
+      .then((counts: unknown) => {
+        if (!counts || typeof counts !== 'object') return;
+        const c = counts as Record<string, number>;
+        setCategoryOptions(
+          CATEGORY_ORDER.map(cat => ({
+            value: cat,
+            label: `${CATEGORY_LABELS[cat]} (${c[cat] || 0})`,
+          })),
+        );
+      })
+      .catch(() => {}); // non-critical — fall back to label-only options
   }, []);
 
   // ── Fetch page 1 on every committedFilters change ─────────────────────────
@@ -246,7 +280,7 @@ export function useJobFilters(initialCompany?: string) {
 
   // ── Clear active filters (keeps sort preference) ──────────────────────────
   const clearFilters = useCallback(() => {
-    setFilters(prev => ({ ...prev, company: [], date: 'All', search: '' }));
+    setFilters(prev => ({ ...prev, company: [], category: [], date: 'All', search: '' }));
   }, [setFilters]);
 
   // ── Patch a single job in-memory ─────────────────────────────────────────
@@ -260,17 +294,19 @@ export function useJobFilters(initialCompany?: string) {
   // ── Derived booleans ──────────────────────────────────────────────────────
   const hasActiveFilters = useMemo(
     () =>
-      filters.search.trim() !== '' ||
+      filters.search.trim() !== ''  ||
       filters.company.length > 0    ||
+      filters.category.length > 0   ||
       filters.date !== 'All',
     [filters],
   );
 
   const activeFilterCount = useMemo(
     () =>
-      (filters.search.trim()      ? 1 : 0) +
-      (filters.company.length > 0 ? 1 : 0) +
-      (filters.date !== 'All'     ? 1 : 0),
+      (filters.search.trim()       ? 1 : 0) +
+      (filters.company.length > 0  ? 1 : 0) +
+      (filters.category.length > 0 ? 1 : 0) +
+      (filters.date !== 'All'      ? 1 : 0),
     [filters],
   );
 
@@ -291,5 +327,6 @@ export function useJobFilters(initialCompany?: string) {
     // Helpers
     updateJob,
     companyOptions,
+    categoryOptions,
   };
 }

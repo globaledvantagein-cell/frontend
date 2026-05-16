@@ -18,6 +18,7 @@ import {
 interface FilterBarProps {
   filters: FilterState;
   companyOptions:Array<{value:string;label:string}>;
+  categoryOptions:Array<{value:string;label:string}>;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   filteredCount: number;
   totalCount: number;
@@ -37,6 +38,7 @@ export function DashboardFilterBar({
   hasActiveFilters,
   activeFilterCount,
   companyOptions,
+  categoryOptions,
   clearFilters,
   openDropdown,
   setOpenDropdown,
@@ -58,26 +60,37 @@ export function DashboardFilterBar({
 
   const renderFilterSelects = (widthOverride?: number | string) => (
     <>
-      
+      <FilterDropdown
+        id="company"
+        label="Company"
+        value=""
+        options={companyOptions}
+        onChange={() => {}}
+        multiSelect={true}
+        selectedValues={filters.company}
+        onMultiChange={vals => setFilters(prev => ({ ...prev, company: vals }))}
+        openId={openDropdown}
+        onOpenChange={setOpenDropdown}
+        active={filters.company.length > 0}
+        width={widthOverride ?? 160}
+        searchable={true}
+      />
 
-   
-
-<FilterDropdown
-  id="company"
-  label="Company"
-  value=""
-  options={companyOptions}
-  onChange={() => {}}
-  multiSelect={true}
-  selectedValues={filters.company}
-  onMultiChange={vals => setFilters(prev => ({ ...prev, company: vals }))}
-  openId={openDropdown}
-  onOpenChange={setOpenDropdown}
-  active={filters.company.length > 0}
-  width={widthOverride ?? 160}
-  searchable={true}
-/>
-
+      <FilterDropdown
+        id="category"
+        label="Category"
+        value=""
+        options={categoryOptions}
+        onChange={() => {}}
+        multiSelect={true}
+        selectedValues={filters.category}
+        onMultiChange={vals => setFilters(prev => ({ ...prev, category: vals }))}
+        openId={openDropdown}
+        onOpenChange={setOpenDropdown}
+        active={filters.category.length > 0}
+        width={widthOverride ?? 180}
+        searchable={false}
+      />
 
       <FilterDropdown
         id="date"
@@ -204,7 +217,8 @@ export function DashboardFilterBar({
 // ── Mobile filter bottom sheet ──────────────────────────────────
 
 interface MobileFilterSheetProps {
-  companyOptions:Array<{value:string;label:string}>
+  companyOptions:Array<{value:string;label:string}>;
+  categoryOptions:Array<{value:string;label:string}>;
   filters: FilterState;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   filteredCount: number;
@@ -222,13 +236,12 @@ export function MobileFilterSheet({
   hasActiveFilters,
   clearFilters,
   companyOptions,
+  categoryOptions,
   openDropdown,
   setOpenDropdown,
   onClose,
 }: MobileFilterSheetProps) {
   const renderSortSelect = (width: number | string) => (
-
-    
     <FilterDropdown
       id="sort"
       label="Sort"
@@ -244,24 +257,38 @@ export function MobileFilterSheet({
 
   const renderFilterSelects = (widthOverride?: number | string) => (
     <>
+      <FilterDropdown
+        id="company"
+        label="Company"
+        value=""
+        options={companyOptions}
+        onChange={() => {}}
+        multiSelect={true}
+        selectedValues={filters.company}
+        onMultiChange={vals => setFilters(prev => ({ ...prev, company: vals }))}
+        openId={openDropdown}
+        onOpenChange={setOpenDropdown}
+        active={filters.company.length > 0}
+        width={widthOverride ?? 160}
+        searchable={true}
+      />
 
+      <FilterDropdown
+        id="category"
+        label="Category"
+        value=""
+        options={categoryOptions}
+        onChange={() => {}}
+        multiSelect={true}
+        selectedValues={filters.category}
+        onMultiChange={vals => setFilters(prev => ({ ...prev, category: vals }))}
+        openId={openDropdown}
+        onOpenChange={setOpenDropdown}
+        active={filters.category.length > 0}
+        width={widthOverride ?? 180}
+        searchable={false}
+      />
 
- <FilterDropdown
-  id="company"
-  label="Company"
-  value=""
-  options={companyOptions}
-  onChange={() => {}}
-  multiSelect={true}
-  selectedValues={filters.company}
-  onMultiChange={vals => setFilters(prev => ({ ...prev, company: vals }))}
-  openId={openDropdown}
-  onOpenChange={setOpenDropdown}
-  active={filters.company.length > 0}
-  width={widthOverride ?? 160}
-  searchable={true}
-/>
-     
       <FilterDropdown
         id="date"
         label="Date"
