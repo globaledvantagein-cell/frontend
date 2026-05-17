@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, CheckCircle, Briefcase, Globe, ArrowRight, Shield, Mail } from 'lucide-react';
+import { Sparkles, CheckCircle, Briefcase, Globe, ArrowRight, Shield, Mail, Check } from 'lucide-react';
 import { Button, FormField, Input, Select, Alert } from '../components/ui';
 import { CONTENT } from '../theme/content';
 
@@ -11,11 +11,10 @@ import { CONTENT } from '../theme/content';
  * adds the user's email + preferences to the talent pool so they receive
  * weekly job-digest emails. To actually use the site (browse + apply),
  * users sign in with Google via /login.
- *
- * (Previously this was the "Signup" page; renamed for clarity.)
  */
 
 const COUNTRIES = CONTENT.signup.countries;
+const CATEGORY_OPTIONS = CONTENT.signup.form.categoryOptions as Record<string, ReadonlyArray<{value: string; label: string}>>;
 
 const TRUST = [
   { icon: <Mail size={14} />, text: CONTENT.signup.leftPanel.perks[0] },
@@ -24,13 +23,45 @@ const TRUST = [
 ];
 
 export default function Alerts() {
-  const [fd, setFd] = useState({ name: '', email: '', domain: 'Tech', location: '' });
+  const [fd, setFd] = useState({
+    name: '',
+    email: '',
+    domain: 'Tech' as 'Tech' | 'Non-Tech',
+    location: '',
+    desiredCategories: [] as string[],
+  });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [err, setErr] = useState('');
+
+  const toggleCategory = (value: string) => {
+    setFd(prev => {
+      const current = prev.desiredCategories;
+      const next = current.includes(value)
+        ? current.filter(c => c !== value)
+        : [...current, value];
+      return { ...prev, desiredCategories: next };
+    });
+  };
+
+  const handleDomainSwitch = (nextDomain: 'Tech' | 'Non-Tech') => {
+    const options = CATEGORY_OPTIONS[nextDomain];
+    setFd(prev => ({
+      ...prev,
+      domain: nextDomain,
+      desiredCategories: options.map(o => o.value),
+    }));
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (fd.location.startsWith('---')) return;
+
+    if (fd.desiredCategories.length === 0) {
+      setErr('Please select at least one job category.');
+      setStatus('error');
+      return;
+    }
+
     setStatus('loading');
     setErr('');
     try {
@@ -47,6 +78,8 @@ export default function Alerts() {
       setErr(e.message);
     }
   };
+
+  const subCategoryOptions = CATEGORY_OPTIONS[fd.domain] || [];
 
   if (status === 'success') return (
     <div style={{ minHeight: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)', padding: 24, position: 'relative', overflow: 'hidden' }}>
@@ -95,16 +128,94 @@ export default function Alerts() {
             </div>
             {status === 'error' && <div style={{ marginBottom: 18 }}><Alert type="error">{err}</Alert></div>}
             <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <FormField label={CONTENT.signup.form.labels.fullName}><Input type="text" required placeholder={CONTENT.signup.form.placeholders.fullName} value={fd.name} onChange={e => setFd({ ...fd, name: e.target.value })} /></FormField>
-              <FormField label={CONTENT.signup.form.labels.email}><Input type="email" required placeholder={CONTENT.signup.form.placeholders.email} value={fd.email} onChange={e => setFd({ ...fd, email: e.target.value })} /></FormField>
+              <FormField label={CONTENT.signup.form.labels.fullName}>
+                <Input type="text" required placeholder={CONTENT.signup.form.placeholders.fullName} value={fd.name} onChange={e => setFd({ ...fd, name: e.target.value })} />
+              </FormField>
+              <FormField label={CONTENT.signup.form.labels.email}>
+                <Input type="email" required placeholder={CONTENT.signup.form.placeholders.email} value={fd.email} onChange={e => setFd({ ...fd, email: e.target.value })} />
+              </FormField>
+
+              {/* ── Domain selector (Tech / Non-Tech) ──────────────────────── */}
               <div>
-                <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted-ink)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Briefcase size={11} />{CONTENT.signup.form.labels.jobInterest}</p>
+                <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted-ink)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Briefcase size={11} />{CONTENT.signup.form.labels.jobInterest}
+                </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {CONTENT.signup.form.domainOptions.map(([v, l]) => (
-                    <button key={v} type="button" onClick={() => setFd({ ...fd, domain: v })} style={{ padding: '11px', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 600, background: fd.domain === v ? 'var(--primary-soft)' : 'var(--paper2)', color: fd.domain === v ? 'var(--primary)' : 'var(--muted-ink)', border: `1.25px solid ${fd.domain === v ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 10, cursor: 'pointer', transition: 'all 0.22s' }}>{l}</button>
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => handleDomainSwitch(v as 'Tech' | 'Non-Tech')}
+                      style={{
+                        padding: '11px',
+                        fontFamily: 'inherit',
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        background: fd.domain === v ? 'var(--primary-soft)' : 'var(--paper2)',
+                        color: fd.domain === v ? 'var(--primary)' : 'var(--muted-ink)',
+                        border: `1.25px solid ${fd.domain === v ? 'var(--primary)' : 'var(--border)'}`,
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        transition: 'all 0.22s',
+                      }}
+                    >
+                      {l}
+                    </button>
                   ))}
                 </div>
               </div>
+
+              {/* ── Sub-category multi-select chips ─────────────────────────── */}
+              <div>
+                <p style={{
+                  fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted-ink)',
+                  marginBottom: 8, letterSpacing: '0.04em',
+                }}>
+                  Select categories you're interested in
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {subCategoryOptions.map(option => {
+                    const isSelected = fd.desiredCategories.includes(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => toggleCategory(option.value)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '7px 12px',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          fontFamily: 'inherit',
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                          transition: 'all 0.18s ease',
+                          border: isSelected
+                            ? '1.25px solid var(--acid)'
+                            : '1.25px solid var(--border)',
+                          background: isSelected
+                            ? 'var(--acid-soft)'
+                            : 'var(--paper2)',
+                          color: isSelected
+                            ? 'var(--acid)'
+                            : 'var(--muted-ink)',
+                        }}
+                      >
+                        {isSelected && <Check size={12} strokeWidth={3} />}
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {fd.desiredCategories.length === 0 && (
+                  <p style={{ fontSize: '0.72rem', color: 'var(--subtle-ink)', marginTop: 6, fontStyle: 'italic' }}>
+                    Tap to select at least one category
+                  </p>
+                )}
+              </div>
+
               <FormField label={CONTENT.signup.form.labels.currentCountry}>
                 <Select required value={fd.location} onChange={e => setFd({ ...fd, location: e.target.value })}>
                   <option value="" disabled>{CONTENT.signup.form.countryPlaceholder}</option>

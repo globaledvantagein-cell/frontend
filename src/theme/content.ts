@@ -92,6 +92,18 @@ export const CONTENT = {
         ['Tech', 'Tech / IT'],
         ['Non-Tech', 'Business / Other'],
       ] as const,
+      categoryOptions: {
+        Tech: [
+          { value: 'software', label: 'Software Engineering' },
+          { value: 'data', label: 'Data / AI' },
+          { value: 'product_tech', label: 'Product (Tech)' },
+          { value: 'other_tech', label: 'Other Technical' },
+        ],
+        'Non-Tech': [
+          { value: 'product_nontech', label: 'Product (Non-Tech)' },
+          { value: 'other_nontech', label: 'Other Non-Technical' },
+        ],
+      } as const,
       countryPlaceholder: 'Select your country',
       submitCta: 'Join the list',
       adminPrompt: 'Admin?',
