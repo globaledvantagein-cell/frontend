@@ -8,14 +8,17 @@ import type { IJob, ICompany } from '../types';
 import { Button, Container } from '../components/ui';
 import { BRAND } from '../theme/brand';
 import { CONTENT } from '../theme/content';
+import { useAuth } from '../context/AuthContext';
 
 const TICKER = CONTENT.home.ticker;
 // ...existing code...
 
 export default function Home() {
+  const { isAuthenticated, token } = useAuth();
   const [jobs, setJobs] = useState<IJob[]>([]);
   const [companies, setCompanies] = useState<ICompany[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
     document.title = `${BRAND.fullName} | ${BRAND.tagline}`;
@@ -27,6 +30,19 @@ export default function Home() {
       } catch (e) { console.error(e); } finally { setLoading(false); }
     })();
   }, []);
+
+  // Check subscription status for logged-in users
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
+        const profile = await res.json();
+        if (profile.isSubscribed) setIsSubscribed(true);
+      } catch { /* ignore */ }
+    })();
+  }, [isAuthenticated, token]);
 
 
   const previewJobs = jobs.slice(0, 6);
@@ -53,7 +69,9 @@ export default function Home() {
           </div>
           <div className="anim-up hero-cta-group" style={{ animationDelay: '0.2s', display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Link to="/jobs"><Button size="lg">Browse Jobs <ArrowRight size={15} /></Button></Link>
-            <Link to="/signup"><Button variant="ghost" size="lg">{CONTENT.home.hero.secondaryCta}</Button></Link>
+            {!isSubscribed && (
+              <Link to="/signup"><Button variant="ghost" size="lg">{CONTENT.home.hero.secondaryCta}</Button></Link>
+            )}
           </div>
         </Container>
         <div className="ticker-wrap" style={{ position: 'relative', overflow: 'hidden', borderTop: '1.25px solid var(--border)', borderBottom: '1.25px solid var(--border)', padding: '13px 0', background: 'var(--surface-solid)', zIndex: 1 }}>

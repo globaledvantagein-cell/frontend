@@ -23,14 +23,34 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Prefixed keys prevent collisions when multiple projects share localhost
+const STORAGE_KEY_TOKEN = 'ejg_token';
+const STORAGE_KEY_USER = 'ejg_user';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const storedToken = localStorage.getItem(STORAGE_KEY_TOKEN);
+    const storedUser = localStorage.getItem(STORAGE_KEY_USER);
+
+    // Migrate old unprefixed keys (one-time, seamless for existing users)
+    if (!storedToken && !storedUser) {
+      const oldToken = localStorage.getItem('token');
+      const oldUser = localStorage.getItem('user');
+      if (oldToken && oldUser) {
+        localStorage.setItem(STORAGE_KEY_TOKEN, oldToken);
+        localStorage.setItem(STORAGE_KEY_USER, oldUser);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setToken(oldToken);
+        setUser(JSON.parse(oldUser));
+        setIsLoading(false);
+        return;
+      }
+    }
 
     if (storedToken && storedUser) {
       setToken(storedToken);
@@ -40,8 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = (newToken: string, newUser: User) => {
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
+    localStorage.setItem(STORAGE_KEY_TOKEN, newToken);
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
   };
@@ -55,8 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem(STORAGE_KEY_TOKEN);
+    localStorage.removeItem(STORAGE_KEY_USER);
     setToken(null);
     setUser(null);
   };

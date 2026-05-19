@@ -27,6 +27,7 @@ export default function Dashboard() {
     companyOptions,
     categoryOptions,
     jobs,
+    setJobs,
     totalJobs,
     hasMore,
     loading,
@@ -68,18 +69,43 @@ export default function Dashboard() {
     }
   }, [jobs, selectedJobId, isMobile]);
 
-  // Deep link
+  // Deep link — if the job is in the loaded list, select it.
+  // If not (e.g. it's on a later page), fetch it individually and prepend.
   useEffect(() => {
     if (!deepLinkedJobId || handledDeepLinkRef.current === deepLinkedJobId) return;
+
     const target = jobs.find(job => job._id === deepLinkedJobId);
-    if (!target) return;
-    setSelectedJobId(target._id);
-    handledDeepLinkRef.current = deepLinkedJobId;
-    if (isMobile) {
-      savedScrollRef.current = window.scrollY;
-      setMobileDetailOpen(true);
+    if (target) {
+      setSelectedJobId(target._id);
+      handledDeepLinkRef.current = deepLinkedJobId;
+      if (isMobile) {
+        savedScrollRef.current = window.scrollY;
+        setMobileDetailOpen(true);
+      }
+      return;
     }
-  }, [jobs, deepLinkedJobId, isMobile]);
+
+    // Job not in current page — fetch it from the API
+    if (loading) return; // wait for initial load to finish first
+    fetch(`/api/jobs/${deepLinkedJobId}/full`)
+      .then(r => { if (!r.ok) throw new Error('Not found'); return r.json(); })
+      .then((data: any) => {
+        if (!data?.job) return;
+        const job = data.job as IJob;
+        // Only prepend if still not in the list (avoid duplicates if it loaded between retries)
+        setJobs(prev => prev.some(j => j._id === job._id) ? prev : [job, ...prev]);
+        setSelectedJobId(job._id);
+        handledDeepLinkRef.current = deepLinkedJobId;
+        if (isMobile) {
+          savedScrollRef.current = window.scrollY;
+          setMobileDetailOpen(true);
+        }
+      })
+      .catch(() => {
+        // Job doesn't exist or was deleted — just land on default browse page
+        handledDeepLinkRef.current = deepLinkedJobId;
+      });
+  }, [jobs, deepLinkedJobId, isMobile, loading]);
 
   // Auto-scroll to selected card
   useEffect(() => {

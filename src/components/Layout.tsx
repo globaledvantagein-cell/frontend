@@ -1,25 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { LogOut, User, Menu, X, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeProvider';
 import Footer from './Footer';
 import FeedbackWidget from './FeedbackWidget';
+import { Toast } from './Toast';
 import { Button, Badge } from './ui';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
 export default function Layout() {
   const loc = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, logout, isAuthenticated, isAdmin } = useAuth();
   const { mode, toggle } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerClosing, setDrawerClosing] = useState(false);
   const [unreadFeedback, setUnreadFeedback] = useState(0);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const isMobileNav = useMediaQuery('(max-width: 767px)');
 
   const hideFeedbackWidget = isAdmin || loc.pathname.startsWith('/admin');
 
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  // ── Toast triggers from URL params ─────────────────────────────────
+  useEffect(() => {
+    if (searchParams.get('unsubscribed') === 'true') {
+      setToast({ message: 'You have been unsubscribed from the weekly digest.', type: 'success' });
+      // Clean up the URL param without causing a navigation
+      searchParams.delete('unsubscribed');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     closeDrawer();
@@ -214,10 +227,34 @@ export default function Layout() {
             {/* Desktop: user info / auth buttons */}
             {!isMobileNav && isAuthenticated && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Link
+                  to="/profile"
+                  className="no-touch-expand"
+                  style={{
+                    fontSize: '0.8rem',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    textDecoration: 'none',
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    border: '1px solid transparent',
+                    transition: 'all 0.18s',
+                    fontWeight: 600,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.color = 'var(--acid)';
+                    e.currentTarget.style.borderColor = 'var(--border-mid)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.color = 'var(--text-muted)';
+                    e.currentTarget.style.borderColor = 'transparent';
+                  }}
+                >
                   <User size={13} /> {user?.name}
                   {isAdmin && <Badge variant="red" style={{ fontSize: '0.58rem', padding: '2px 6px' }}>ADMIN</Badge>}
-                </span>
+                </Link>
                 <button
                   onClick={logout}
                   className="no-touch-expand"
@@ -300,10 +337,22 @@ export default function Layout() {
             <div style={{ borderTop: '1px solid var(--border)', padding: '16px 20px', flexShrink: 0, paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
               {isAuthenticated ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Link
+                    to="/profile"
+                    onClick={closeDrawer}
+                    style={{
+                      fontSize: '0.82rem',
+                      color: 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                    }}
+                  >
                     <User size={13} /> {user?.name}
                     {isAdmin && <Badge variant="red" style={{ fontSize: '0.58rem', padding: '2px 6px' }}>ADMIN</Badge>}
-                  </span>
+                  </Link>
                   <button
                     onClick={() => { logout(); closeDrawer(); }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '0.9rem', fontFamily: 'inherit', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: 0 }}
@@ -324,6 +373,15 @@ export default function Layout() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Global toast notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
       )}
 
       <main

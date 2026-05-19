@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, CheckCircle, Briefcase, Globe, ArrowRight, Shield, Mail, Check } from 'lucide-react';
+import { Sparkles, CheckCircle, Briefcase, Globe, ArrowRight, Shield, Mail, Check, Bell } from 'lucide-react';
 import { Button, FormField, Input, Select, Alert } from '../components/ui';
 import { CONTENT } from '../theme/content';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * Weekly Job Alerts subscription page.
@@ -14,7 +15,10 @@ import { CONTENT } from '../theme/content';
  */
 
 const COUNTRIES = CONTENT.signup.countries;
-const CATEGORY_OPTIONS = CONTENT.signup.form.categoryOptions as Record<string, ReadonlyArray<{value: string; label: string}>>;
+const CATEGORY_OPTIONS = CONTENT.signup.form.categoryOptions;
+
+const TECH_CATEGORY_IDS = CATEGORY_OPTIONS.Tech.map(o => o.value);
+const NONTECH_CATEGORY_IDS = CATEGORY_OPTIONS['Non-Tech'].map(o => o.value);
 
 const TRUST = [
   { icon: <Mail size={14} />, text: CONTENT.signup.leftPanel.perks[0] },
@@ -23,6 +27,7 @@ const TRUST = [
 ];
 
 export default function Alerts() {
+  const { isAuthenticated, token } = useAuth();
   const [fd, setFd] = useState({
     name: '',
     email: '',
@@ -30,8 +35,28 @@ export default function Alerts() {
     location: '',
     desiredCategories: [] as string[],
   });
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'already_subscribed'>('idle');
   const [err, setErr] = useState('');
+
+  // ── Check if logged-in user is already subscribed ─────────────────────
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const profile = await res.json();
+        if (profile.isSubscribed) {
+          setStatus('already_subscribed');
+        }
+        // Pre-fill form with profile data if available
+        if (profile.name) setFd(prev => ({ ...prev, name: profile.name }));
+        if (profile.email) setFd(prev => ({ ...prev, email: profile.email }));
+      } catch { /* ignore */ }
+    })();
+  }, [isAuthenticated, token]);
 
   const toggleCategory = (value: string) => {
     setFd(prev => {
@@ -44,11 +69,12 @@ export default function Alerts() {
   };
 
   const handleDomainSwitch = (nextDomain: 'Tech' | 'Non-Tech') => {
-    const options = CATEGORY_OPTIONS[nextDomain];
+    if (fd.domain === nextDomain) return; // no-op if already selected
+    // Clear categories from the other domain, keep nothing selected
     setFd(prev => ({
       ...prev,
       domain: nextDomain,
-      desiredCategories: options.map(o => o.value),
+      desiredCategories: [],
     }));
   };
 
@@ -65,10 +91,18 @@ export default function Alerts() {
     setStatus('loading');
     setErr('');
     try {
+      // domain is local UI state only (controls which chips show);
+      // backend filter uses desiredCategories as source of truth.
+      const payload = {
+        name: fd.name,
+        email: fd.email,
+        location: fd.location,
+        desiredCategories: fd.desiredCategories,
+      };
       const r = await fetch('/api/auth/talent-pool', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fd),
+        body: JSON.stringify(payload),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || CONTENT.signup.fallbackError);
@@ -81,6 +115,25 @@ export default function Alerts() {
 
   const subCategoryOptions = CATEGORY_OPTIONS[fd.domain] || [];
 
+  // ── Already subscribed state ──────────────────────────────────────────
+  if (status === 'already_subscribed') return (
+    <div style={{ minHeight: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)', padding: 24, position: 'relative', overflow: 'hidden' }}>
+      <div className="orb" style={{ width: 400, height: 400, top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: 'var(--primary-soft)' }} />
+      <div className="anim-scale" style={{ textAlign: 'center', padding: 56, maxWidth: 420, position: 'relative', zIndex: 1, background: 'var(--surface-solid)', border: '1.25px solid var(--border)', borderRadius: 18, boxShadow: 'var(--shadow-lg)' }}>
+        <div style={{ width: 58, height: 58, background: 'var(--primary-soft)', border: '1.25px solid var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', margin: '0 auto 22px' }}><Bell size={26} /></div>
+        <h2 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 12 }}>You're already subscribed</h2>
+        <p style={{ color: 'var(--muted-ink)', lineHeight: 1.75, marginBottom: 30, fontSize: '0.92rem' }}>
+          You're receiving weekly job alerts. You can manage your email preferences from your profile.
+        </p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link to="/profile"><Button>Manage Preferences</Button></Link>
+          <Link to="/jobs"><Button style={{ background: 'var(--paper2)', color: 'var(--ink)', border: '1.25px solid var(--border)' }}>Browse Jobs <ArrowRight size={14} /></Button></Link>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Success state ─────────────────────────────────────────────────────
   if (status === 'success') return (
     <div style={{ minHeight: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)', padding: 24, position: 'relative', overflow: 'hidden' }}>
       <div className="orb" style={{ width: 400, height: 400, top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: 'var(--primary-soft)' }} />
@@ -128,12 +181,37 @@ export default function Alerts() {
             </div>
             {status === 'error' && <div style={{ marginBottom: 18 }}><Alert type="error">{err}</Alert></div>}
             <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <FormField label={CONTENT.signup.form.labels.fullName}>
-                <Input type="text" required placeholder={CONTENT.signup.form.placeholders.fullName} value={fd.name} onChange={e => setFd({ ...fd, name: e.target.value })} />
-              </FormField>
-              <FormField label={CONTENT.signup.form.labels.email}>
-                <Input type="email" required placeholder={CONTENT.signup.form.placeholders.email} value={fd.email} onChange={e => setFd({ ...fd, email: e.target.value })} />
-              </FormField>
+              {isAuthenticated ? (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 16px',
+                  background: 'var(--paper2)',
+                  border: '1.25px solid var(--border)',
+                  borderRadius: 10,
+                }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: 'var(--primary-soft)', border: '1.25px solid var(--primary)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 700, flexShrink: 0,
+                  }}>
+                    {fd.name?.charAt(0)?.toUpperCase() || '?'}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fd.name}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--muted-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fd.email}</div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <FormField label={CONTENT.signup.form.labels.fullName}>
+                    <Input type="text" required placeholder={CONTENT.signup.form.placeholders.fullName} value={fd.name} onChange={e => setFd({ ...fd, name: e.target.value })} />
+                  </FormField>
+                  <FormField label={CONTENT.signup.form.labels.email}>
+                    <Input type="email" required placeholder={CONTENT.signup.form.placeholders.email} value={fd.email} onChange={e => setFd({ ...fd, email: e.target.value })} />
+                  </FormField>
+                </>
+              )}
 
               {/* ── Domain selector (Tech / Non-Tech) ──────────────────────── */}
               <div>
@@ -226,12 +304,15 @@ export default function Alerts() {
                 <Sparkles size={14} />{CONTENT.signup.form.submitCta}
               </Button>
             </form>
-            <p style={{ textAlign: 'center', marginTop: 18, fontSize: '0.875rem', color: 'var(--subtle-ink)' }}>
-              Want full access?{' '}
-              <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none' }}>
-                Sign in with Google
-              </Link>
-            </p>
+            {/* Only show "Sign in with Google" for anonymous users */}
+            {!isAuthenticated && (
+              <p style={{ textAlign: 'center', marginTop: 18, fontSize: '0.875rem', color: 'var(--subtle-ink)' }}>
+                Want full access?{' '}
+                <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none' }}>
+                  Sign in with Google
+                </Link>
+              </p>
+            )}
           </div>
         </div>
       </div>

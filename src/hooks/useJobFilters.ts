@@ -319,6 +319,7 @@ export function useJobFilters(initialCompany?: string) {
     activeFilterCount,
     // Server results
     jobs,
+    setJobs,
     totalJobs,
     hasMore,
     loading,
