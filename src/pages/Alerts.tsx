@@ -17,8 +17,7 @@ import { useAuth } from '../context/AuthContext';
 const COUNTRIES = CONTENT.signup.countries;
 const CATEGORY_OPTIONS = CONTENT.signup.form.categoryOptions;
 
-const TECH_CATEGORY_IDS = CATEGORY_OPTIONS.Tech.map(o => o.value);
-const NONTECH_CATEGORY_IDS = CATEGORY_OPTIONS['Non-Tech'].map(o => o.value);
+
 
 const TRUST = [
   { icon: <Mail size={14} />, text: CONTENT.signup.leftPanel.perks[0] },
