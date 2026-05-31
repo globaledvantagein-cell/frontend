@@ -14,7 +14,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (token: string, user: User) => void;
-  loginWithGoogle: (credential: string, acceptedTerms: boolean) => Promise<void>;
+  loginWithGoogle: (credential: string, acceptedTerms: boolean, extraBody?: Record<string, unknown>) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -66,10 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(newUser);
   };
 
-  const loginWithGoogle = async (credential: string, acceptedTerms: boolean) => {
+  const loginWithGoogle = async (credential: string, acceptedTerms: boolean, extraBody: Record<string, unknown> = {}) => {
     const res = await apiPost<{ token: string; user: User }>('/api/auth/google', {
       credential,
       acceptedTerms,
+      ...extraBody,
     });
     login(res.token, res.user);
   };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { Link } from 'react-router-dom';
 import { Alert } from './ui';
@@ -13,7 +13,16 @@ interface Props {
   size?: 'medium' | 'large';
   /** Text on the Google button */
   text?: 'signin_with' | 'continue_with' | 'signup_with';
+  /**
+   * Extra fields to include in the POST /api/auth/google body.
+   * Used by the Login page to pass subscribeToDigest + desiredCategories.
+   */
+  extraBody?: Record<string, unknown>;
 }
+
+// Google Identity Services button accepts a width between 200 and 400 px.
+const MIN_WIDTH = 200;
+const MAX_WIDTH = 400;
 
 /**
  * Shared Google sign-in widget.
@@ -27,17 +36,44 @@ interface Props {
  * a given email (audit trail). Returning users don't re-trigger this —
  * the timestamp is set once and never overwritten.
  *
- * Used by: /login page and the SignupGate component.
+ * The Google-rendered button has a fixed pixel width and won't auto-stretch.
+ * We measure our container with ResizeObserver and feed that width back
+ * into <GoogleLogin width={...}/> so the button always fills its slot
+ * (clamped to GIS's 200–400 px range).
  */
 export default function GoogleAuthButton({
   onSuccess,
   onError,
   size = 'large',
   text = 'continue_with',
+  extraBody = {},
 }: Props) {
   const { loginWithGoogle } = useAuth();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [buttonWidth, setButtonWidth] = useState<number>(MAX_WIDTH);
+
+  // Track the container width and clamp it to GIS's accepted range so the
+  // button fills its slot on every viewport.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const update = (w: number) => {
+      const clamped = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.floor(w)));
+      setButtonWidth(prev => (prev === clamped ? prev : clamped));
+    };
+
+    update(el.getBoundingClientRect().width);
+
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) update(entry.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const handleSuccess = async (credentialResponse: any) => {
     setError('');
@@ -45,7 +81,8 @@ export default function GoogleAuthButton({
     try {
       // Always pass acceptedTerms=true — the user clicking this button
       // IS their agreement (the legal notice is visible below).
-      await loginWithGoogle(credentialResponse.credential, true);
+      // Also forward any extra fields (subscribeToDigest, desiredCategories).
+      await loginWithGoogle(credentialResponse.credential, true, extraBody);
       onSuccess?.();
     } catch (err: any) {
       const message = err.message || 'Google sign-in failed';
@@ -61,7 +98,9 @@ export default function GoogleAuthButton({
       {error && <Alert type="error">{error}</Alert>}
 
       <div
+        ref={containerRef}
         style={{
+          width: '100%',
           display: 'flex',
           justifyContent: 'center',
           opacity: loading ? 0.6 : 1,
@@ -76,6 +115,7 @@ export default function GoogleAuthButton({
           size={size}
           text={text}
           shape="rectangular"
+          width={String(buttonWidth)}
           useOneTap={false}
         />
       </div>
