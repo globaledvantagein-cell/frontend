@@ -1,0 +1,71 @@
+/**
+ * Single card in the Dashboard's job list.
+ * Memoized — re-renders only when the job, selection state, or callback change.
+ */
+import { forwardRef, memo } from 'react';
+import type { IJob } from '../../types';
+import { Badge } from '../ui';
+import { compactSalary, getDisplayLocation, normalizeWorkplace } from '../../utils/job';
+import { relativeDate } from '../../utils/date';
+
+interface DesktopProps {
+  job: IJob;
+  selected: boolean;
+  onClick: () => void;
+}
+
+export const DesktopJobCard = memo(
+  forwardRef<HTMLButtonElement, DesktopProps>(function DesktopJobCard({ job, selected, onClick }, ref) {
+    const salary = compactSalary(job);
+    const wp = normalizeWorkplace(job.WorkplaceType);
+    const showWp = wp === 'Remote' || wp === 'Hybrid';
+
+    return (
+      <button
+        ref={ref}
+        onClick={onClick}
+        style={{
+          border:     selected ? '1px solid var(--acid)' : '1px solid var(--border)',
+          background: selected ? 'var(--acid-soft)' : 'var(--bg-surface-2)',
+          borderRadius: 10, padding: 12,
+          textAlign: 'left', cursor: 'pointer', width: '100%',
+        }}
+      >
+        <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.35, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+          {job.JobTitle}
+        </p>
+        <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {job.Company} | {getDisplayLocation(job)}
+        </p>
+        {(showWp || salary) && (
+          <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
+            {showWp && <Badge variant="blue"  style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{wp}</Badge>}
+            {salary && <Badge variant="green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{salary}</Badge>}
+          </div>
+        )}
+      </button>
+    );
+  })
+);
+
+interface MobileProps {
+  job: IJob;
+  onClick: () => void;
+}
+
+export const MobileJobCard = memo(function MobileJobCard({ job, onClick }: MobileProps) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        border: '1px solid var(--border)', borderRadius: 10,
+        background: 'var(--bg-surface)', padding: '14px 12px',
+        textAlign: 'left', width: '100%',
+      }}
+    >
+      <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3 }}>{job.JobTitle}</p>
+      <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 4 }}>{job.Company} · {getDisplayLocation(job)}</p>
+      <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: 3 }}>{relativeDate(job.PostedDate || job.scrapedAt)}</p>
+    </button>
+  );
+});

@@ -6,7 +6,7 @@ import SkeletonCompanyCard from '../components/SkeletonCompanyCard';
 import Pagination from '../components/Pagination';
 import type { SortOption } from '../hooks/useCompanies';
 import type { ICompany } from '../types';
-
+import { apiGet, apiPost, apiDelete } from '../utils/jobApi';
 
 const ITEMS_PER_PAGE = 24;
 
@@ -29,8 +29,11 @@ export default function AdminCompanies() {
 
   const fetchCompanies = async () => {
     setLoading(true);
-    try { const r = await fetch('/api/jobs/directory'); const d = await r.json(); setAllCompanies(Array.isArray(d) ? d : []); }
-    catch (e) { console.error(e); } finally { setLoading(false); }
+    try {
+      const d = await apiGet<ICompany[]>('/api/jobs/directory', { noAuth: true });
+      setAllCompanies(Array.isArray(d) ? d : []);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   };
 
   const handleSearchChange = useCallback((value: string) => {
@@ -64,21 +67,25 @@ export default function AdminCompanies() {
 
   const addCompany = async (e: React.FormEvent) => {
     e.preventDefault(); setMsg(null); setAdding(true);
-    const token = localStorage.getItem('token');
     try {
-      const r = await fetch('/api/jobs/companies', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(nc) });
-      if (r.ok) { setNc({ name: '', domain: '', cities: '' }); fetchCompanies(); setMsg({ type: 'success', text: 'Company added.' }); }
-      else setMsg({ type: 'error', text: 'Failed to add company.' });
-    } catch { setMsg({ type: 'error', text: 'Network error.' }); } finally { setAdding(false); }
+      await apiPost('/api/jobs/companies', nc);
+      setNc({ name: '', domain: '', cities: '' });
+      fetchCompanies();
+      setMsg({ type: 'success', text: 'Company added.' });
+    } catch { setMsg({ type: 'error', text: 'Failed to add company.' }); }
+    finally { setAdding(false); }
   };
 
   const deleteCompany = async (c: ICompany) => {
     if (!window.confirm(`Delete ${c.companyName}?`)) return;
-    const token = localStorage.getItem('token');
-    if (c.source === 'manual') {
-      try { await fetch(`/api/jobs/companies/${c._id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); setAllCompanies(p => p.filter(x => x._id !== c._id)); }
-      catch { alert('Network Error'); }
-    } else { alert('You can only delete manually-added companies here.'); }
+    if (c.source !== 'manual') {
+      alert('You can only delete manually-added companies here.');
+      return;
+    }
+    try {
+      await apiDelete(`/api/jobs/companies/${c._id}`);
+      setAllCompanies(p => p.filter(x => x._id !== c._id));
+    } catch { alert('Network Error'); }
   };
 
   return (

@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { apiPost } from '../utils/jobApi';
+import { apiPost, STORAGE_KEY_TOKEN, STORAGE_KEY_USER } from '../utils/jobApi';
 
 interface User {
   id: string;
@@ -23,10 +23,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Prefixed keys prevent collisions when multiple projects share localhost
-const STORAGE_KEY_TOKEN = 'ejg_token';
-const STORAGE_KEY_USER = 'ejg_user';
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -36,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedToken = localStorage.getItem(STORAGE_KEY_TOKEN);
     const storedUser = localStorage.getItem(STORAGE_KEY_USER);
 
-    // Migrate old unprefixed keys (one-time, seamless for existing users)
+    // One-time migration from old unprefixed keys (kept transparent for existing users).
     if (!storedToken && !storedUser) {
       const oldToken = localStorage.getItem('token');
       const oldUser = localStorage.getItem('user');
@@ -46,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setToken(oldToken);
-        setUser(JSON.parse(oldUser));
+        try { setUser(JSON.parse(oldUser)); } catch { /* ignore */ }
         setIsLoading(false);
         return;
       }
@@ -54,42 +50,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (storedToken && storedUser) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      try { setUser(JSON.parse(storedUser)); } catch { /* ignore corrupted */ }
     }
     setIsLoading(false);
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
+  const login = useCallback((newToken: string, newUser: User) => {
     localStorage.setItem(STORAGE_KEY_TOKEN, newToken);
     localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
-  };
+  }, []);
 
-  const loginWithGoogle = async (credential: string, acceptedTerms: boolean, extraBody: Record<string, unknown> = {}) => {
+  const loginWithGoogle = useCallback(async (
+    credential: string,
+    acceptedTerms: boolean,
+    extraBody: Record<string, unknown> = {},
+  ) => {
     const res = await apiPost<{ token: string; user: User }>('/api/auth/google', {
       credential,
       acceptedTerms,
       ...extraBody,
-    });
+    }, { noAuth: true });
     login(res.token, res.user);
-  };
+  }, [login]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY_TOKEN);
     localStorage.removeItem(STORAGE_KEY_USER);
     setToken(null);
     setUser(null);
-  };
+  }, []);
 
-  const isAuthenticated = !!token;
-  const isAdmin = user?.role === 'admin';
+  const value = useMemo<AuthContextType>(() => ({
+    user,
+    token,
+    login,
+    loginWithGoogle,
+    logout,
+    isAuthenticated: !!token,
+    isAdmin: user?.role === 'admin',
+    isLoading,
+  }), [user, token, login, loginWithGoogle, logout, isLoading]);
 
-  return (
-    <AuthContext.Provider value={{ user, token, login, loginWithGoogle, logout, isAuthenticated, isAdmin, isLoading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

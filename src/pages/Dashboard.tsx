@@ -1,39 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import MobileDetailOverlay from '../components/MobileDetailOverlay';
-import type { IJob } from '../types';
 import PublicJobDetail from '../components/PublicJobDetail';
 import SignupGate from '../components/SignupGate';
-import { Badge, Button, Container, EmptyState } from '../components/ui';
+import { Button, Container, EmptyState } from '../components/ui';
 import { DashboardFilterBar, MobileFilterSheet } from '../components/DashboardFilterBar';
+import { DesktopJobCard, MobileJobCard } from '../components/jobs/JobListItem';
 import { BRAND } from '../theme/brand';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { useSearchParams } from 'react-router-dom';
-import { relativeDate } from '../utils/date';
-import { normalizeWorkplace, compactSalary, getDisplayLocation } from '../utils/job';
 import { useJobFilters } from '../hooks/useJobFilters';
 import { useGatedJobDetail } from '../hooks/useGatedJobDetail';
+import { useDeepLinkJob } from '../hooks/useDeepLinkJob';
 
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
-  const companyParam  = searchParams.get('company');
+  const companyParam    = searchParams.get('company');
   const deepLinkedJobId = searchParams.get('id');
 
   const {
-    filters,
-    setFilters,
-    clearFilters,
-    hasActiveFilters,
-    activeFilterCount,
-    companyOptions,
-    categoryOptions,
-    jobs,
-    setJobs,
-    totalJobs,
-    hasMore,
-    loading,
-    loadingMore,
-    loadMore,
-    updateJob,
+    filters, setFilters, clearFilters, hasActiveFilters, activeFilterCount,
+    companyOptions, categoryOptions,
+    jobs, setJobs, totalJobs, hasMore,
+    loading, loadingMore, loadMore, updateJob,
   } = useJobFilters(companyParam || undefined);
 
   const [selectedJobId,    setSelectedJobId]    = useState<string | null>(null);
@@ -41,21 +29,21 @@ export default function Dashboard() {
   const [splitHeight,      setSplitHeight]      = useState<number | null>(null);
   const [filterSheetOpen,  setFilterSheetOpen]  = useState(false);
   const [openDropdown,     setOpenDropdown]     = useState<string | null>(null);
+  const [forceGate,        setForceGate]        = useState(false);
 
   const isMobile = useMediaQuery('(max-width: 767px)');
 
-  const heroRef            = useRef<HTMLDivElement | null>(null);
-  const filtersRef         = useRef<HTMLDivElement | null>(null);
-  const splitViewRef       = useRef<HTMLDivElement | null>(null);
-  const listPanelRef       = useRef<HTMLDivElement | null>(null);
-  const sentinelRef        = useRef<HTMLDivElement | null>(null);
-  const desktopJobRefs     = useRef<Record<string, HTMLButtonElement | null>>({});
-  const handledDeepLinkRef = useRef<string | null>(null);
-  const savedScrollRef     = useRef(0);
+  const heroRef        = useRef<HTMLDivElement | null>(null);
+  const filtersRef     = useRef<HTMLDivElement | null>(null);
+  const splitViewRef   = useRef<HTMLDivElement | null>(null);
+  const listPanelRef   = useRef<HTMLDivElement | null>(null);
+  const sentinelRef    = useRef<HTMLDivElement | null>(null);
+  const desktopJobRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const savedScrollRef = useRef(0);
 
   useEffect(() => { document.title = `${BRAND.appName} Jobs`; }, []);
 
-  // Auto-select first job
+  // ── Auto-select first job ───────────────────────────────────────────────
   useEffect(() => {
     if (jobs.length === 0) {
       setSelectedJobId(null);
@@ -69,57 +57,38 @@ export default function Dashboard() {
     }
   }, [jobs, selectedJobId, isMobile]);
 
-  // Deep link — if the job is in the loaded list, select it.
-  // If not (e.g. it's on a later page), fetch it individually and prepend.
-  useEffect(() => {
-    if (!deepLinkedJobId || handledDeepLinkRef.current === deepLinkedJobId) return;
-
-    const target = jobs.find(job => job._id === deepLinkedJobId);
-    if (target) {
-      setSelectedJobId(target._id);
-      handledDeepLinkRef.current = deepLinkedJobId;
-      if (isMobile) {
-        savedScrollRef.current = window.scrollY;
-        setMobileDetailOpen(true);
-      }
-      return;
+  // ── Deep-link handling (extracted into a hook) ──────────────────────────
+  const handleDeepLinkResolve = useCallback((job: any, mobile: boolean) => {
+    setSelectedJobId(job._id);
+    if (mobile) {
+      savedScrollRef.current = window.scrollY;
+      setMobileDetailOpen(true);
     }
+  }, []);
+  const prependJob = useCallback((job: any) => {
+    setJobs(prev => prev.some(j => j._id === job._id) ? prev : [job, ...prev]);
+  }, [setJobs]);
 
-    // Job not in current page — fetch it from the API
-    if (loading) return; // wait for initial load to finish first
-    fetch(`/api/jobs/${deepLinkedJobId}/full`)
-      .then(r => { if (!r.ok) throw new Error('Not found'); return r.json(); })
-      .then((data: any) => {
-        if (!data?.job) return;
-        const job = data.job as IJob;
-        // Only prepend if still not in the list (avoid duplicates if it loaded between retries)
-        setJobs(prev => prev.some(j => j._id === job._id) ? prev : [job, ...prev]);
-        setSelectedJobId(job._id);
-        handledDeepLinkRef.current = deepLinkedJobId;
-        if (isMobile) {
-          savedScrollRef.current = window.scrollY;
-          setMobileDetailOpen(true);
-        }
-      })
-      .catch(() => {
-        // Job doesn't exist or was deleted — just land on default browse page
-        handledDeepLinkRef.current = deepLinkedJobId;
-      });
-  }, [jobs, deepLinkedJobId, isMobile, loading]);
+  useDeepLinkJob({
+    deepLinkedJobId,
+    jobs,
+    loading,
+    isMobile,
+    onResolve: handleDeepLinkResolve,
+    prepend: prependJob,
+  });
 
-  // Auto-scroll to selected card
+  // ── Auto-scroll to selected card on desktop ─────────────────────────────
   useEffect(() => {
     if (!selectedJobId || isMobile) return;
     const node = desktopJobRefs.current[selectedJobId];
     if (!node) return;
-    requestAnimationFrame(() => {
-      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
+    requestAnimationFrame(() => node.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
   }, [selectedJobId, isMobile]);
 
-  // Split-view height
+  // ── Split-view height ───────────────────────────────────────────────────
   useEffect(() => {
-    const updateSplitHeight = () => {
+    const update = () => {
       if (window.innerWidth < 768 || !splitViewRef.current) {
         setSplitHeight(null);
         return;
@@ -127,20 +96,20 @@ export default function Dashboard() {
       const top = splitViewRef.current.getBoundingClientRect().top;
       setSplitHeight(Math.max(window.innerHeight - top - 16, 320));
     };
-    const observer = new ResizeObserver(() => updateSplitHeight());
+    const observer = new ResizeObserver(update);
     const nodes = [heroRef.current, filtersRef.current, splitViewRef.current].filter(Boolean) as Element[];
     nodes.forEach(n => observer.observe(n));
-    window.addEventListener('resize', updateSplitHeight);
-    updateSplitHeight();
+    window.addEventListener('resize', update);
+    update();
     return () => {
       observer.disconnect();
-      window.removeEventListener('resize', updateSplitHeight);
+      window.removeEventListener('resize', update);
     };
   }, [loading]);
 
   useEffect(() => { if (!isMobile) setFilterSheetOpen(false); }, [isMobile]);
 
-  // Infinite scroll
+  // ── Infinite scroll ─────────────────────────────────────────────────────
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel || loading || !hasMore) return;
@@ -150,32 +119,35 @@ export default function Dashboard() {
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [loading, hasMore, loadingMore, loadMore, isMobile]);
+  }, [loading, hasMore, loadMore, isMobile]);
 
-  // Selected job teaser (from list)
+  // ── Selected job / gated detail ─────────────────────────────────────────
   const selectedTeaser = useMemo(
     () => (selectedJobId ? jobs.find(job => job._id === selectedJobId) ?? null : null),
     [jobs, selectedJobId],
   );
 
-  // Gated detail fetch
-  const {
-    job: fullJob,
-    gated,
-    teaser: gatedTeaser,
-    loading: detailLoading,
-    refetch: refetchDetail,
-  } = useGatedJobDetail(selectedJobId, selectedTeaser);
+  const { job: fullJob, gated, teaser: gatedTeaser, loading: detailLoading, refetch: refetchDetail } =
+    useGatedJobDetail(selectedJobId, selectedTeaser);
 
   const desktopSplitHeight = splitHeight ? `${splitHeight}px` : undefined;
 
-  const handleApplyTracked = (jobId: string, applyClicks: number) => {
-    updateJob(jobId, { applyClicks });
-  };
-
-  // Force-gate when an anonymous user clicks Apply on a job they CAN see
-  const [forceGate, setForceGate] = useState(false);
+  // Reset forceGate when selection changes
   useEffect(() => { setForceGate(false); }, [selectedJobId]);
+
+  const handleApplyTracked = useCallback((jobId: string, applyClicks: number) => {
+    updateJob(jobId, { applyClicks });
+  }, [updateJob]);
+
+  // Memoized click handlers per row would require a per-job factory, but the
+  // hot path here (re-renders on selection change) is dominated by the list
+  // items themselves which are memoized. Inline closures are fine.
+  const handleDesktopClick = (jobId: string) => () => setSelectedJobId(jobId);
+  const handleMobileClick  = (jobId: string) => () => {
+    setSelectedJobId(jobId);
+    savedScrollRef.current = window.scrollY;
+    setMobileDetailOpen(true);
+  };
 
   const renderRightPanel = () => {
     if (!selectedJobId) {
@@ -199,12 +171,7 @@ export default function Dashboard() {
       );
     }
     if (gated) {
-      return (
-        <SignupGate
-          teaser={gatedTeaser || selectedTeaser || undefined}
-          onAuthSuccess={refetchDetail}
-        />
-      );
+      return <SignupGate teaser={gatedTeaser || selectedTeaser || undefined} onAuthSuccess={refetchDetail} />;
     }
     if (fullJob) {
       return (
@@ -216,62 +183,6 @@ export default function Dashboard() {
       );
     }
     return null;
-  };
-
-  const renderJobCard = (job: IJob, forMobile: boolean) => {
-    const selected      = selectedJobId === job._id;
-    const salary        = compactSalary(job);
-    const normalizedWp  = normalizeWorkplace(job.WorkplaceType);
-    const showWpBadge   = normalizedWp === 'Remote' || normalizedWp === 'Hybrid';
-
-    if (forMobile) {
-      return (
-        <button
-          key={job._id}
-          onClick={() => {
-            setSelectedJobId(job._id);
-            savedScrollRef.current = window.scrollY;
-            setMobileDetailOpen(true);
-          }}
-          style={{
-            border: '1px solid var(--border)', borderRadius: 10,
-            background: 'var(--bg-surface)', padding: '14px 12px',
-            textAlign: 'left', width: '100%',
-          }}
-        >
-          <p style={{ fontSize: '0.9rem',  color: 'var(--text-primary)',   fontWeight: 700, lineHeight: 1.3 }}>{job.JobTitle}</p>
-          <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)',     marginTop: 4 }}>{job.Company} · {getDisplayLocation(job)}</p>
-          <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)',     marginTop: 3 }}>{relativeDate(job.PostedDate || job.scrapedAt)}</p>
-        </button>
-      );
-    }
-
-    return (
-      <button
-        key={job._id}
-        ref={node => { desktopJobRefs.current[job._id] = node; }}
-        onClick={() => setSelectedJobId(job._id)}
-        style={{
-          border:     selected ? '1px solid var(--acid)' : '1px solid var(--border)',
-          background: selected ? 'var(--acid-soft)'       : 'var(--bg-surface-2)',
-          borderRadius: 10, padding: 12,
-          textAlign: 'left', cursor: 'pointer', width: '100%',
-        }}
-      >
-        <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.35, whiteSpace: 'normal', wordBreak: 'break-word' }}>
-          {job.JobTitle}
-        </p>
-        <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {job.Company} | {getDisplayLocation(job)}
-        </p>
-        {(showWpBadge || salary) && (
-          <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
-            {showWpBadge && <Badge variant="blue"  style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{normalizedWp}</Badge>}
-            {salary       && <Badge variant="green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{salary}</Badge>}
-          </div>
-        )}
-      </button>
-    );
   };
 
   const loadMoreIndicator = (
@@ -312,6 +223,14 @@ export default function Dashboard() {
     </div>
   );
 
+  const emptyState = (
+    <EmptyState
+      title="No jobs match your filters"
+      body={hasActiveFilters ? 'Try adjusting your search or filters.' : 'No roles are currently available.'}
+      action={hasActiveFilters ? <Button variant="ghost" size="sm" onClick={clearFilters}>Clear all filters</Button> : undefined}
+    />
+  );
+
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <div ref={heroRef} style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)', padding: '24px 0', flexShrink: 0 }}>
@@ -332,8 +251,7 @@ export default function Dashboard() {
         <div ref={filtersRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 14, flexShrink: 0 }}>
           <DashboardFilterBar
             filters={filters} setFilters={setFilters}
-            companyOptions={companyOptions}
-            categoryOptions={categoryOptions}
+            companyOptions={companyOptions} categoryOptions={categoryOptions}
             filteredCount={jobs.length} totalCount={totalJobs}
             hasActiveFilters={hasActiveFilters} activeFilterCount={activeFilterCount}
             clearFilters={clearFilters}
@@ -345,8 +263,7 @@ export default function Dashboard() {
         {filterSheetOpen && isMobile && (
           <MobileFilterSheet
             filters={filters} setFilters={setFilters}
-            companyOptions={companyOptions}
-            categoryOptions={categoryOptions}
+            companyOptions={companyOptions} categoryOptions={categoryOptions}
             filteredCount={jobs.length}
             hasActiveFilters={hasActiveFilters} clearFilters={clearFilters}
             openDropdown={openDropdown} setOpenDropdown={setOpenDropdown}
@@ -365,15 +282,17 @@ export default function Dashboard() {
           >
             {loading ? skeletons : (
               <div className="flex flex-col" style={{ gap: 8, padding: 12 }}>
-                {jobs.length === 0 ? (
-                  <EmptyState
-                    title="No jobs match your filters"
-                    body={hasActiveFilters ? 'Try adjusting your search or filters.' : 'No roles are currently available.'}
-                    action={hasActiveFilters ? <Button variant="ghost" size="sm" onClick={clearFilters}>Clear all filters</Button> : undefined}
-                  />
-                ) : (
+                {jobs.length === 0 ? emptyState : (
                   <>
-                    {jobs.map(job => renderJobCard(job, false))}
+                    {jobs.map(job => (
+                      <DesktopJobCard
+                        key={job._id}
+                        ref={node => { desktopJobRefs.current[job._id] = node; }}
+                        job={job}
+                        selected={selectedJobId === job._id}
+                        onClick={handleDesktopClick(job._id)}
+                      />
+                    ))}
                     {loadMoreIndicator}
                   </>
                 )}
@@ -397,15 +316,11 @@ export default function Dashboard() {
             <div className="flex flex-col gap-3">
               {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 88, borderRadius: 10 }} />)}
             </div>
-          ) : jobs.length === 0 ? (
-            <EmptyState
-              title="No jobs match your filters"
-              body={hasActiveFilters ? 'Try adjusting your search or filters.' : 'No roles are currently available.'}
-              action={hasActiveFilters ? <Button variant="ghost" size="sm" onClick={clearFilters}>Clear all filters</Button> : undefined}
-            />
-          ) : (
+          ) : jobs.length === 0 ? emptyState : (
             <>
-              {jobs.map(job => renderJobCard(job, true))}
+              {jobs.map(job => (
+                <MobileJobCard key={job._id} job={job} onClick={handleMobileClick(job._id)} />
+              ))}
               {loadMoreIndicator}
             </>
           )}

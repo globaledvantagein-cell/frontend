@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Container, PageHeader, Button, Badge, Input, EmptyState } from '../components/ui';
-import { useAuth } from '../context/AuthContext';
 import { relativeTime } from '../utils/date';
+import { apiGet, apiPatch, apiDelete } from '../utils/jobApi';
 
 type FeedbackStatus = 'unread' | 'read' | 'resolved' | 'archived';
 
-type FeedbackItem = {
+interface FeedbackItem {
   _id: string;
   name?: string | null;
   email?: string | null;
@@ -15,21 +15,21 @@ type FeedbackItem = {
   status: FeedbackStatus;
   adminNote?: string | null;
   createdAt?: string;
-};
+}
 
-type FeedbackStats = {
+interface FeedbackStats {
   total: number;
   unread: number;
   read: number;
   resolved: number;
-};
+}
 
 const STATUS_TABS: Array<{ key: 'all' | FeedbackStatus; label: string }> = [
-  { key: 'all', label: 'All' },
-  { key: 'unread', label: 'Unread' },
-  { key: 'read', label: 'Read' },
-  { key: 'resolved', label: 'Resolved' },
-  { key: 'archived', label: 'Archived' },
+  { key: 'all',       label: 'All' },
+  { key: 'unread',    label: 'Unread' },
+  { key: 'read',      label: 'Read' },
+  { key: 'resolved',  label: 'Resolved' },
+  { key: 'archived',  label: 'Archived' },
 ];
 
 function statusDotColor(status: FeedbackStatus) {
@@ -39,10 +39,7 @@ function statusDotColor(status: FeedbackStatus) {
   return 'var(--subtle-ink)';
 }
 
-// relativeTime imported from utils/date
-
 export default function AdminFeedback() {
-  const { token } = useAuth();
   const [items, setItems] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -52,13 +49,9 @@ export default function AdminFeedback() {
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
   const [noteOpen, setNoteOpen] = useState<Record<string, boolean>>({});
 
-  const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
-
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/feedback/stats', { headers });
-      if (!response.ok) return;
-      const payload = await response.json();
+      const payload = await apiGet<FeedbackStats>('/api/feedback/stats');
       setStats({
         total: payload?.total || 0,
         unread: payload?.unread || 0,
@@ -78,15 +71,13 @@ export default function AdminFeedback() {
       query.set('limit', '100');
       query.set('status', statusFilter);
 
-      const response = await fetch(`/api/feedback?${query.toString()}`, { headers });
-      const payload = await response.json();
-      setItems(Array.isArray(payload?.feedback) ? payload.feedback : []);
+      const payload = await apiGet<{ feedback?: FeedbackItem[] }>(`/api/feedback?${query}`);
+      const list = Array.isArray(payload?.feedback) ? payload.feedback : [];
+      setItems(list);
 
-      const initialNotes: Record<string, string> = {};
-      (Array.isArray(payload?.feedback) ? payload.feedback : []).forEach((item: FeedbackItem) => {
-        initialNotes[item._id] = item.adminNote || '';
-      });
-      setAdminNotes(initialNotes);
+      const initial: Record<string, string> = {};
+      list.forEach(item => { initial[item._id] = item.adminNote || ''; });
+      setAdminNotes(initial);
     } catch {
       setItems([]);
     } finally {
@@ -97,23 +88,16 @@ export default function AdminFeedback() {
   useEffect(() => {
     fetchFeedback();
     fetchStats();
-  }, [statusFilter, token]);
+  }, [statusFilter]);
 
   const patchStatus = async (id: string, status: FeedbackStatus, adminNote: string | null = null) => {
     setSavingId(id);
     try {
-      const response = await fetch(`/api/feedback/${id}`, {
-        method: 'PATCH',
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status, adminNote })
-      });
-
-      if (!response.ok) return;
+      await apiPatch(`/api/feedback/${id}`, { status, adminNote });
       await fetchFeedback();
       await fetchStats();
+    } catch (err) {
+      console.error('[AdminFeedback] patch failed', err);
     } finally {
       setSavingId(null);
     }
@@ -122,16 +106,12 @@ export default function AdminFeedback() {
   const removeFeedback = async (id: string) => {
     if (!window.confirm('Delete this feedback permanently?')) return;
     setDeletingId(id);
-
     try {
-      const response = await fetch(`/api/feedback/${id}`, {
-        method: 'DELETE',
-        headers,
-      });
-
-      if (!response.ok) return;
+      await apiDelete(`/api/feedback/${id}`);
       await fetchFeedback();
       await fetchStats();
+    } catch (err) {
+      console.error('[AdminFeedback] delete failed', err);
     } finally {
       setDeletingId(null);
     }
@@ -168,12 +148,8 @@ export default function AdminFeedback() {
                   borderRadius: 999,
                   background: active ? 'var(--primary-soft)' : 'var(--bg-surface)',
                   color: active ? 'var(--primary)' : 'var(--text-secondary)',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  padding: '6px 12px',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  fontFamily: 'inherit',
+                  fontSize: '0.78rem', fontWeight: 700,
+                  padding: '6px 12px', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
                 }}
               >
                 {tab.label}
@@ -184,7 +160,7 @@ export default function AdminFeedback() {
 
         {loading ? (
           <div style={{ display: 'grid', gap: 10 }}>
-            {[1, 2, 3].map(item => <div key={item} className="skeleton" style={{ height: 160 }} />)}
+            {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 160 }} />)}
           </div>
         ) : items.length === 0 ? (
           <EmptyState title="No feedback found" body="New footer submissions will appear here." />
@@ -227,17 +203,11 @@ export default function AdminFeedback() {
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                     <Badge variant="neutral" style={{ fontSize: '0.68rem' }}>Source: {item.source || 'footer'}</Badge>
                     <Badge variant="neutral" style={{ fontSize: '0.68rem' }}>{item.wordCount || 0} words</Badge>
-                    <Badge variant="neutral" style={{ fontSize: '0.68rem' }}>{relativeTime(item.createdAt)}</Badge>
                   </div>
 
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                     {item.status === 'unread' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        loading={savingId === item._id}
-                        onClick={() => patchStatus(item._id, 'read')}
-                      >
+                      <Button variant="outline" size="sm" loading={savingId === item._id} onClick={() => patchStatus(item._id, 'read')}>
                         Mark Read
                       </Button>
                     )}
@@ -253,7 +223,7 @@ export default function AdminFeedback() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setNoteOpen(previous => ({ ...previous, [item._id]: !previous[item._id] }))}
+                      onClick={() => setNoteOpen(prev => ({ ...prev, [item._id]: !prev[item._id] }))}
                     >
                       {noteOpen[item._id] ? 'Hide Note' : 'Admin Note'}
                     </Button>
@@ -264,7 +234,7 @@ export default function AdminFeedback() {
                       <div style={{ flex: '1 1 280px' }}>
                         <Input
                           value={currentNote}
-                          onChange={event => setAdminNotes(previous => ({ ...previous, [item._id]: event.target.value }))}
+                          onChange={e => setAdminNotes(prev => ({ ...prev, [item._id]: e.target.value }))}
                           placeholder="Add an admin note"
                           maxLength={500}
                           style={{ background: 'var(--bg-surface-2)', border: '1px solid var(--border)' }}

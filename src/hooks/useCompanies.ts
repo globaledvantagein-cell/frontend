@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ICompany } from '../types';
+import { apiGet } from '../utils/jobApi';
 
 export type SortOption = 'a-z' | 'z-a' | 'most-hiring';
 
@@ -33,11 +34,8 @@ export function useCompanies({ page, limit, search, sort }: UseCompaniesParams):
         setLoading(true);
         setError(null);
 
-        fetch('/api/jobs/directory', { signal: ctrl.signal })
-            .then(r => r.json())
-            .then(d => {
-                setAllCompanies(Array.isArray(d) ? d : []);
-            })
+        apiGet<ICompany[]>('/api/jobs/directory', { signal: ctrl.signal, noAuth: true })
+            .then(d => setAllCompanies(Array.isArray(d) ? d : []))
             .catch(e => {
                 if (e.name !== 'AbortError') {
                     console.error(e);
@@ -54,7 +52,6 @@ export function useCompanies({ page, limit, search, sort }: UseCompaniesParams):
         return () => { abortRef.current?.abort(); };
     }, [fetchCompanies]);
 
-    // Filter, sort, paginate in memory
     const { companies, total, totalPages } = useMemo(() => {
         const q = search.toLowerCase().trim();
         let filtered = allCompanies;
@@ -66,7 +63,6 @@ export function useCompanies({ page, limit, search, sort }: UseCompaniesParams):
             );
         }
 
-        // Sort
         const sorted = [...filtered].sort((a, b) => {
             if (sort === 'a-z') return a.companyName.localeCompare(b.companyName);
             if (sort === 'z-a') return b.companyName.localeCompare(a.companyName);

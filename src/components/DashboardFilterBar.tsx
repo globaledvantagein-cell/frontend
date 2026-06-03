@@ -1,24 +1,17 @@
 /**
- * Dashboard filter bar component — renders 3 responsive variants
- * (mobile, tablet, desktop) plus the mobile filter bottom sheet.
- * Extracted from Dashboard.tsx to keep the page component focused on layout.
+ * Dashboard filter bar — three responsive variants (mobile/tablet/desktop)
+ * + the mobile filter bottom sheet. Renders the shared filter dropdowns
+ * from ./filters/jobFilterSelects.
  */
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { Input } from './ui';
-import FilterDropdown from './FilterDropdown';
-import {
-  SORT_DROPDOWN_OPTIONS,
-  DATE_DROPDOWN_OPTIONS,
-  FILTER_CONTROL_STYLE,
-  type FilterState,
-  type SortOption,
-  type DateFilter,
-} from '../hooks/useJobFilters';
+import { FILTER_CONTROL_STYLE, type FilterState, type FilterDropdownOption } from '../hooks/useJobFilters';
+import { SortSelect, FilterSelects } from './filters/jobFilterSelects';
 
 interface FilterBarProps {
   filters: FilterState;
-  companyOptions:Array<{value:string;label:string}>;
-  categoryOptions:Array<{value:string;label:string}>;
+  companyOptions: FilterDropdownOption[];
+  categoryOptions: FilterDropdownOption[];
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   filteredCount: number;
   totalCount: number;
@@ -44,98 +37,14 @@ export function DashboardFilterBar({
   setOpenDropdown,
   onOpenFilterSheet,
 }: FilterBarProps) {
-  const renderSortSelect = (width: number | string) => (
-    <FilterDropdown
-      id="sort"
-      label="Sort"
-      value={filters.sort}
-      options={SORT_DROPDOWN_OPTIONS}
-      onChange={val => setFilters(previous => ({ ...previous, sort: val as SortOption }))}
-      openId={openDropdown}
-      onOpenChange={setOpenDropdown}
-      active={filters.sort !== 'newest'}
-      width={width}
-    />
-  );
-
-  const renderFilterSelects = (widthOverride?: number | string) => (
-    <>
-      <FilterDropdown
-        id="company"
-        label="Company"
-        value=""
-        options={companyOptions}
-        onChange={() => {}}
-        multiSelect={true}
-        selectedValues={filters.company}
-        onMultiChange={vals => setFilters(prev => ({ ...prev, company: vals }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.company.length > 0}
-        width={widthOverride ?? 160}
-        searchable={true}
-      />
-
-      <FilterDropdown
-        id="category"
-        label="Category"
-        value=""
-        options={categoryOptions}
-        onChange={() => {}}
-        multiSelect={true}
-        selectedValues={filters.category}
-        onMultiChange={vals => setFilters(prev => ({ ...prev, category: vals }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.category.length > 0}
-        width={widthOverride ?? 180}
-        searchable={false}
-      />
-
-      <FilterDropdown
-        id="date"
-        label="Date"
-        value={filters.date}
-        options={DATE_DROPDOWN_OPTIONS}
-        onChange={val => setFilters(previous => ({ ...previous, date: val as DateFilter }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.date !== 'All'}
-        width={widthOverride ?? 120}
-      />
-    </>
-  );
-
-  const renderClearAllButton = () => {
-    if (!hasActiveFilters) return null;
-
-    return (
-      <button
-        onClick={clearFilters}
-        style={{
-          height: 34, paddingInline: 12, borderRadius: 8,
-          border: '1px solid var(--border)',
-          background: 'var(--bg-surface-2)',
-          color: 'var(--text-muted)',
-          fontSize: '0.74rem', fontWeight: 500,
-          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
-          whiteSpace: 'nowrap', flexShrink: 0,
-          transition: 'all 0.2s ease',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)'; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
-      >
-        <X size={11} /> Clear all
-      </button>
-    );
-  };
+  const selectsProps = { filters, setFilters, companyOptions, categoryOptions, openDropdown, setOpenDropdown };
 
   const searchInput = (
     <div className="relative" style={{ flex: 1, minWidth: 0 }}>
       <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
       <Input
         value={filters.search}
-        onChange={event => setFilters(previous => ({ ...previous, search: event.target.value }))}
+        onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
         placeholder="Search jobs..."
         style={{ ...FILTER_CONTROL_STYLE, width: '100%', paddingLeft: 32, color: 'var(--text-secondary)', borderColor: filters.search.trim() ? 'var(--acid)' : undefined }}
       />
@@ -148,9 +57,29 @@ export function DashboardFilterBar({
     </span>
   );
 
+  const clearAll = hasActiveFilters ? (
+    <button
+      onClick={clearFilters}
+      style={{
+        height: 34, paddingInline: 12, borderRadius: 8,
+        border: '1px solid var(--border)',
+        background: 'var(--bg-surface-2)',
+        color: 'var(--text-muted)',
+        fontSize: '0.74rem', fontWeight: 500,
+        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
+        whiteSpace: 'nowrap', flexShrink: 0,
+        transition: 'border-color 0.18s, color 0.18s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+    >
+      <X size={11} /> Clear all
+    </button>
+  ) : null;
+
   return (
     <>
-      {/* Mobile filter bar: search + filter pill button */}
+      {/* Mobile */}
       <div className="filter-bar-mobile">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -173,40 +102,38 @@ export function DashboardFilterBar({
         </div>
       </div>
 
-      {/* Tablet filter bar: two rows */}
+      {/* Tablet */}
       <div className="filter-bar-tablet">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {searchInput}
-            {renderSortSelect(120)}
+            <SortSelect {...selectsProps} width={120} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            {renderFilterSelects()}
+            <FilterSelects {...selectsProps} />
             <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              {countLabel}
-              {renderClearAllButton()}
+              {countLabel}{clearAll}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Desktop filter bar: one row */}
+      {/* Desktop */}
       <div className="filter-bar-full">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div className="relative" style={{ flex: 1, minWidth: 180, maxWidth: 300 }}>
             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
             <Input
               value={filters.search}
-              onChange={event => setFilters(previous => ({ ...previous, search: event.target.value }))}
+              onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
               placeholder="Search jobs..."
               style={{ ...FILTER_CONTROL_STYLE, width: '100%', paddingLeft: 32, color: 'var(--text-secondary)', borderColor: filters.search.trim() ? 'var(--acid)' : undefined }}
             />
           </div>
-          {renderSortSelect(120)}
-          {renderFilterSelects()}
+          <SortSelect {...selectsProps} width={120} />
+          <FilterSelects {...selectsProps} />
           <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-            {countLabel}
-            {renderClearAllButton()}
+            {countLabel}{clearAll}
           </div>
         </div>
       </div>
@@ -217,8 +144,8 @@ export function DashboardFilterBar({
 // ── Mobile filter bottom sheet ──────────────────────────────────
 
 interface MobileFilterSheetProps {
-  companyOptions:Array<{value:string;label:string}>;
-  categoryOptions:Array<{value:string;label:string}>;
+  companyOptions: FilterDropdownOption[];
+  categoryOptions: FilterDropdownOption[];
   filters: FilterState;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   filteredCount: number;
@@ -241,67 +168,7 @@ export function MobileFilterSheet({
   setOpenDropdown,
   onClose,
 }: MobileFilterSheetProps) {
-  const renderSortSelect = (width: number | string) => (
-    <FilterDropdown
-      id="sort"
-      label="Sort"
-      value={filters.sort}
-      options={SORT_DROPDOWN_OPTIONS}
-      onChange={val => setFilters(previous => ({ ...previous, sort: val as SortOption }))}
-      openId={openDropdown}
-      onOpenChange={setOpenDropdown}
-      active={filters.sort !== 'newest'}
-      width={width}
-    />
-  );
-
-  const renderFilterSelects = (widthOverride?: number | string) => (
-    <>
-      <FilterDropdown
-        id="company"
-        label="Company"
-        value=""
-        options={companyOptions}
-        onChange={() => {}}
-        multiSelect={true}
-        selectedValues={filters.company}
-        onMultiChange={vals => setFilters(prev => ({ ...prev, company: vals }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.company.length > 0}
-        width={widthOverride ?? 160}
-        searchable={true}
-      />
-
-      <FilterDropdown
-        id="category"
-        label="Category"
-        value=""
-        options={categoryOptions}
-        onChange={() => {}}
-        multiSelect={true}
-        selectedValues={filters.category}
-        onMultiChange={vals => setFilters(prev => ({ ...prev, category: vals }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.category.length > 0}
-        width={widthOverride ?? 180}
-        searchable={false}
-      />
-
-      <FilterDropdown
-        id="date"
-        label="Date"
-        value={filters.date}
-        options={DATE_DROPDOWN_OPTIONS}
-        onChange={val => setFilters(previous => ({ ...previous, date: val as DateFilter }))}
-        openId={openDropdown}
-        onOpenChange={setOpenDropdown}
-        active={filters.date !== 'All'}
-        width={widthOverride ?? 120}
-      />
-    </>
-  );
+  const selectsProps = { filters, setFilters, companyOptions, categoryOptions, openDropdown, setOpenDropdown };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }}>
@@ -323,10 +190,10 @@ export function MobileFilterSheet({
         </div>
         <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>Sort by</div>
-          {renderSortSelect('100%')}
+          <SortSelect {...selectsProps} width="100%" />
           <div style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 4, marginBottom: 2 }}>Filter by</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {renderFilterSelects('100%')}
+            <FilterSelects {...selectsProps} widthOverride="100%" />
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>

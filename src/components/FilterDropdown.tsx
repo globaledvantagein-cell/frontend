@@ -1,29 +1,22 @@
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { FilterOptionList, type FilterOption } from './filters/FilterOptionList';
 
-export interface FilterDropdownOption {
-  value: string;
-  label: string;
-}
+export type FilterDropdownOption = FilterOption;
 
-interface FilterDropdownProps {
-  /** Unique key used to control which dropdown is open (pass the same `openId`/`onOpenChange` to all siblings) */
+interface Props {
   id: string;
-  /** Placeholder label shown in the trigger when `value === 'All'` */
   label: string;
   value: string;
   options: FilterDropdownOption[];
   onChange: (value: string) => void;
-  /** Currently open dropdown id — controlled externally so only one is open at a time */
   openId: string | null;
   onOpenChange: (id: string | null) => void;
-  /** Highlights the border when a non-default filter is active */
   active?: boolean;
   style?: CSSProperties;
   width?: number | string;
-  /** Renders a search box at the top of the panel (useful for long lists) */
   searchable?: boolean;
   multiSelect?: boolean;
   selectedValues?: string[];
@@ -42,10 +35,10 @@ export default function FilterDropdown({
   style,
   width,
   searchable = false,
-  multiSelect = false,  
-  selectedValues=[],
-  onMultiChange,    
-}: FilterDropdownProps) {
+  multiSelect = false,
+  selectedValues = [],
+  onMultiChange,
+}: Props) {
   const isOpen = openId === id;
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [search, setSearch] = useState('');
@@ -67,27 +60,19 @@ export default function FilterDropdown({
       onOpenChange(null);
       return;
     }
-
     if (triggerRef.current && !isMobile) {
       const rect = triggerRef.current.getBoundingClientRect();
       setPanelPos({ top: rect.bottom + 4, left: rect.left, minWidth: rect.width });
       setReady(true);
     }
-
     onOpenChange(id);
   };
 
-  useEffect(() => {
-    if (!isOpen) {
-      setReady(false);
-    }
-  }, [isOpen]);
+  // ── Open/close lifecycle effects ────────────────────────────────────────
+  useEffect(() => { if (!isOpen) setReady(false); }, [isOpen]);
+  useEffect(() => { if (isOpen && !isMobile) updatePos(); }, [isOpen, isMobile, updatePos]);
 
-  useEffect(() => {
-    if (!isOpen || isMobile) return;
-    updatePos();
-  }, [isOpen, isMobile, updatePos]);
-
+  // Reposition on scroll/resize
   useEffect(() => {
     if (!isOpen || isMobile) return;
     window.addEventListener('scroll', updatePos, true);
@@ -98,10 +83,9 @@ export default function FilterDropdown({
     };
   }, [isOpen, isMobile, updatePos]);
 
-  // Close on click outside (desktop only — mobile handled by overlay)
+  // Close on outside click (desktop only)
   useEffect(() => {
     if (!isOpen || isMobile) return;
-
     let handler: ((e: MouseEvent | TouchEvent) => void) | null = null;
 
     const rafId = requestAnimationFrame(() => {
@@ -112,37 +96,29 @@ export default function FilterDropdown({
         if ((target as HTMLElement).closest?.(`[data-dropdown-id="${id}"]`)) return;
         onOpenChange(null);
       };
-
       document.addEventListener('mousedown', handler);
     });
 
     return () => {
       cancelAnimationFrame(rafId);
-      if (handler) {
-        document.removeEventListener('mousedown', handler);
-      }
+      if (handler) document.removeEventListener('mousedown', handler);
     };
   }, [isOpen, isMobile, onOpenChange, id]);
 
-  // Escape to close
-  useEffect(() => {
-    if (!isOpen) return;
-    const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onOpenChange(null); };
-    document.addEventListener('keydown', handle);
-    return () => document.removeEventListener('keydown', handle);
-  }, [isOpen, onOpenChange]);
-
-  // Search state cleanup + autofocus
+  // Escape to close + reset search on close + autofocus on open
   useEffect(() => {
     if (!isOpen) {
       setSearch('');
       return;
     }
-
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onOpenChange(null); };
+    document.addEventListener('keydown', onEsc);
     if (searchable) {
-      setTimeout(() => searchRef.current?.focus(), 30);
+      const t = setTimeout(() => searchRef.current?.focus(), 30);
+      return () => { document.removeEventListener('keydown', onEsc); clearTimeout(t); };
     }
-  }, [isOpen, searchable]);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [isOpen, onOpenChange, searchable]);
 
   // Lock body scroll on mobile when open
   useEffect(() => {
@@ -155,86 +131,27 @@ export default function FilterDropdown({
   }, [isOpen, isMobile]);
 
   const selectedOption = options.find(o => o.value === value);
-  const displayLabel= multiSelect
-  ?(selectedValues.length > 0?`${selectedValues.length} selected`:label)
-  :(value=="All" || !selectedOption ?label:selectedOption.label);
+  const displayLabel = multiSelect
+    ? (selectedValues.length > 0 ? `${selectedValues.length} selected` : label)
+    : (value === 'All' || !selectedOption ? label : selectedOption.label);
 
-  const filteredOptions = searchable && search.trim()
-    ? options.filter(o => o.value === 'All' || o.label.toLowerCase().includes(search.toLowerCase()))
-    : options;
+  const handleSelect = useCallback((val: string) => {
+    if (!multiSelect) {
+      onChange(val);
+      onOpenChange(null);
+      return;
+    }
+    if (!onMultiChange) return;
+    if (val === 'All') {
+      onMultiChange([]);
+    } else if (selectedValues.includes(val)) {
+      onMultiChange(selectedValues.filter(v => v !== val));
+    } else {
+      onMultiChange([...selectedValues, val]);
+    }
+  }, [multiSelect, onChange, onOpenChange, onMultiChange, selectedValues]);
 
-  const selectOption = (val: string) => { onChange(val); onOpenChange(null); };
-
-  const OptionList = () => (
-    <>
-      {filteredOptions.length === 0 ? (
-        <div style={{ padding: '10px 12px', fontSize: '0.76rem', color: 'var(--text-muted)', textAlign: 'center' }}>No results</div>
-      ) : (
-        filteredOptions.map(option => {
-          const selected = multiSelect
-  ? (option.value === 'All' ? selectedValues.length === 0 : selectedValues.includes(option.value))
-  : option.value === value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              role="option"
-              aria-selected={selected}
-              onMouseDown={e => e.stopPropagation()}
-            onClick={() => {
-  if (!multiSelect) {
-    selectOption(option.value);
-    return;
-  }
-  if (!onMultiChange) return;
-  if (option.value === 'All') {
-    onMultiChange([]);
-  } else if (selectedValues.includes(option.value)) {
-    onMultiChange(selectedValues.filter(v => v !== option.value));
-  } else {
-    onMultiChange([...selectedValues, option.value]);
-  }
-}}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                width: '100%',
-                padding: isMobile ? '14px 16px' : '8px 12px',
-                fontSize: isMobile ? '0.92rem' : '0.8rem',
-                minHeight: isMobile ? 48 : undefined,
-                  background: selected ? 'var(--acid-soft)' : 'transparent',
-                border: 'none', cursor: 'pointer',
-                color: selected ? 'var(--acid)' : 'var(--text-secondary)',
-                textAlign: 'left', fontFamily: 'inherit',
-                  fontWeight: selected ? 600 : 400,
-                borderBottom: isMobile ? '1px solid var(--border)' : 'none',
-                  borderLeft: selected ? '2px solid var(--acid)' : '2px solid transparent',
-                  transition: 'all 0.12s ease',
-              }}
-              onMouseEnter={e => {
-                  if (!selected) {
-                    e.currentTarget.style.background = 'var(--bg-surface)';
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                    e.currentTarget.style.paddingLeft = isMobile ? '18px' : '14px';
-                  }
-              }}
-              onMouseLeave={e => {
-                  if (!selected) {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                    e.currentTarget.style.paddingLeft = isMobile ? '16px' : '12px';
-                  }
-              }}
-            >
-              <span>{option.label}</span>
-              {selected && <Check size={isMobile ? 14 : 11} style={{ flexShrink: 0, marginLeft: 6, color: 'var(--acid)' }} />}
-            </button>
-          );
-        })
-      )}
-    </>
-  );
-
-  // ── MOBILE: bottom sheet ───────────────────────────────
+  // ── MOBILE: bottom sheet ────────────────────────────────────────────────
   const mobilePanel = isOpen && isMobile ? (
     <>
       <div className="bottom-sheet-overlay" onClick={() => onOpenChange(null)} />
@@ -267,12 +184,22 @@ export default function FilterDropdown({
           </div>
         )}
         <div className="bottom-sheet-body" style={{ padding: 0 }} role="listbox">
-          <OptionList />
+          <FilterOptionList
+            options={options}
+            search={search}
+            value={value}
+            selectedValues={selectedValues}
+            multiSelect={multiSelect}
+            isMobile={true}
+            searchable={searchable}
+            onSelect={handleSelect}
+          />
         </div>
       </div>
     </>
   ) : null;
 
+  // ── DESKTOP: anchored panel ─────────────────────────────────────────────
   const desktopPanel = isOpen && !isMobile && ready ? (
     <div
       ref={panelRef}
@@ -313,7 +240,16 @@ export default function FilterDropdown({
         </div>
       )}
       <div style={{ overflowY: 'auto', maxHeight: searchable ? 240 : 280 }}>
-        <OptionList />
+        <FilterOptionList
+          options={options}
+          search={search}
+          value={value}
+          selectedValues={selectedValues}
+          multiSelect={multiSelect}
+          isMobile={false}
+          searchable={searchable}
+          onSelect={handleSelect}
+        />
       </div>
     </div>
   ) : null;
@@ -344,7 +280,7 @@ export default function FilterDropdown({
             outline: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center',
             width: '100%', textAlign: 'left', position: 'relative', fontFamily: 'inherit',
-            transition: 'all 0.2s ease',
+            transition: 'background 0.18s, border-color 0.18s, color 0.18s',
             fontWeight: active ? 600 : 400,
           }}
         >

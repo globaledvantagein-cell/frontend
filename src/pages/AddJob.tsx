@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import type { FormEvent } from 'react';
 import { PlusCircle } from 'lucide-react';
 import { Container, PageHeader, Button, FormField, Input, Select, Textarea, Alert, Card } from '../components/ui';
-
-const API_URL = `/api/jobs`;
+import { apiPost } from '../utils/jobApi';
 
 export default function AddJob() {
   const [fd, setFd] = useState({ JobTitle: '', ApplicationURL: '', Company: '', Location: 'Germany', Department: '', ContractType: 'Full-time', ExperienceLevel: '', PostedDate: '', Description: '' });
@@ -15,9 +14,7 @@ export default function AddJob() {
   const submit = async (e: FormEvent) => {
     e.preventDefault(); setMsg(null); setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ ...fd, GermanRequired: false }) });
-      const d = await r.json(); if (!r.ok) throw new Error(d.error);
+      await apiPost('/api/jobs', { ...fd, GermanRequired: false });
       setMsg({ type: 'success', text: 'Job added successfully.' });
       setFd({ JobTitle: '', ApplicationURL: '', Company: '', Location: 'Germany', Department: '', ContractType: 'Full-time', ExperienceLevel: '', PostedDate: '', Description: '' });
     } catch (e) { setMsg({ type: 'error', text: `Error: ${(e as Error).message}` }); } finally { setLoading(false); }

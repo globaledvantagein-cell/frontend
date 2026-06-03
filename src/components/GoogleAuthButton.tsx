@@ -1,22 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { Link } from 'react-router-dom';
 import { Alert } from './ui';
 import { useAuth } from '../context/AuthContext';
 
 interface Props {
-  /** Called after successful Google sign-in + JWT issuance */
   onSuccess?: () => void;
-  /** Override the default error display */
   onError?: (message: string) => void;
-  /** Visual size of the Google button */
   size?: 'medium' | 'large';
-  /** Text on the Google button */
   text?: 'signin_with' | 'continue_with' | 'signup_with';
-  /**
-   * Extra fields to include in the POST /api/auth/google body.
-   * Used by the Login page to pass subscribeToDigest + desiredCategories.
-   */
+  /** Extra fields spread into POST /api/auth/google body (e.g. subscribeToDigest) */
   extraBody?: Record<string, unknown>;
 }
 
@@ -26,20 +19,9 @@ const MAX_WIDTH = 400;
 
 /**
  * Shared Google sign-in widget.
- *
- * Terms acceptance is implicit: clicking the Google button = agreement.
- * The notice below the button serves as visible legal disclosure
- * ("browsewrap with notice"), the standard pattern used by Google,
- * Notion, Linear, etc.
- *
- * Backend records `acceptedTermsAt` on the FIRST successful sign-in for
- * a given email (audit trail). Returning users don't re-trigger this —
- * the timestamp is set once and never overwritten.
- *
- * The Google-rendered button has a fixed pixel width and won't auto-stretch.
- * We measure our container with ResizeObserver and feed that width back
- * into <GoogleLogin width={...}/> so the button always fills its slot
- * (clamped to GIS's 200–400 px range).
+ * Measures its container with ResizeObserver and feeds the width to
+ * <GoogleLogin/> so the button always fills its slot — fixes the "oddly
+ * narrow" Google button issue across both desktop and mobile.
  */
 export default function GoogleAuthButton({
   onSuccess,
@@ -55,8 +37,6 @@ export default function GoogleAuthButton({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [buttonWidth, setButtonWidth] = useState<number>(MAX_WIDTH);
 
-  // Track the container width and clamp it to GIS's accepted range so the
-  // button fills its slot on every viewport.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -67,7 +47,6 @@ export default function GoogleAuthButton({
     };
 
     update(el.getBoundingClientRect().width);
-
     const ro = new ResizeObserver(entries => {
       for (const entry of entries) update(entry.contentRect.width);
     });
@@ -79,9 +58,8 @@ export default function GoogleAuthButton({
     setError('');
     setLoading(true);
     try {
-      // Always pass acceptedTerms=true — the user clicking this button
-      // IS their agreement (the legal notice is visible below).
-      // Also forward any extra fields (subscribeToDigest, desiredCategories).
+      // Clicking the Google button IS the user's agreement to the Terms —
+      // notice below acts as visible legal disclosure (browsewrap-with-notice).
       await loginWithGoogle(credentialResponse.credential, true, extraBody);
       onSuccess?.();
     } catch (err: any) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FileText, RefreshCw, Search, AlertCircle, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Button, Input, Badge, EmptyState, Alert } from '../components/ui';
@@ -7,6 +7,7 @@ import { useSplitView } from '../hooks/useSplitView';
 import AdminLogDetail from '../components/AdminLogDetail';
 import MobileDetailOverlay from '../components/MobileDetailOverlay';
 import type { JobLog } from '../components/AdminLogDetail';
+import { apiGet, apiPost, ApiError, STORAGE_KEY_TOKEN, STORAGE_KEY_USER } from '../utils/jobApi';
 
 export default function JobTestLogs() {
   const [logs, setLogs] = useState<JobLog[]>([]);
@@ -20,10 +21,11 @@ export default function JobTestLogs() {
   const navigate = useNavigate();
 
   const filtered = useMemo(() => {
+    const q = search.toLowerCase();
     return logs.filter(log => {
-      const matchesSearch = log.JobTitle?.toLowerCase().includes(search.toLowerCase()) ||
-                           log.Company?.toLowerCase().includes(search.toLowerCase()) ||
-                           log.JobID?.includes(search);
+      const matchesSearch = log.JobTitle?.toLowerCase().includes(q) ||
+                            log.Company?.toLowerCase().includes(q) ||
+                            log.JobID?.includes(search);
       const matchesDecision = filterDecision === 'all' || log.FinalDecision === filterDecision;
       return matchesSearch && matchesDecision;
     });
@@ -33,82 +35,43 @@ export default function JobTestLogs() {
     selectedItem: selectedLog,
     setSelectedId: setSelectedLogId,
     selectedId: selectedLogId,
-    mobileDetailOpen,
-    openMobileDetail,
-    closeMobileDetail,
-    splitViewRef,
-    itemRefs: desktopLogRefs,
-    desktopSplitHeight,
-    isMobile,
+    mobileDetailOpen, openMobileDetail, closeMobileDetail,
+    splitViewRef, itemRefs: desktopLogRefs, desktopSplitHeight, isMobile,
   } = useSplitView(filtered, {
     recalcDeps: [loading, search, filterDecision],
     bottomPadding: 32,
   });
 
-  useEffect(() => { fetchLogs(); }, []);
-
   const fetchLogs = async () => {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        setError(CONTENT.admin.jobTestLogs.states.noToken);
-        setLoading(false);
+      const data = await apiGet<JobLog[]>('/api/jobs/test-logs');
+      setLogs(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('Error fetching logs:', e);
+      if (e instanceof ApiError && (e.status === 401 || e.status === 400)) {
+        setError(CONTENT.admin.jobTestLogs.states.expired);
+        localStorage.removeItem(STORAGE_KEY_TOKEN);
+        localStorage.removeItem(STORAGE_KEY_USER);
+        setTimeout(() => navigate('/login'), 2000);
         return;
       }
-      
-      const res = await fetch('/api/jobs/test-logs', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (res.status === 401 || res.status === 400) {
-        const data = await res.json();
-        if (data.error === 'Invalid Token' || data.error?.includes('Token')) {
-          setError(CONTENT.admin.jobTestLogs.states.expired);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setTimeout(() => navigate('/login'), 2000);
-          return;
-        }
-      }
-      
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-      
-      const data = await res.json();
-      const fetchedLogs = Array.isArray(data) ? data : [];
-      setLogs(fetchedLogs);
-    } catch (e) { 
-      console.error('Error fetching logs:', e);
       setError(CONTENT.admin.jobTestLogs.states.failedLoad);
+    } finally {
+      setLoading(false);
     }
-    finally { setLoading(false); }
   };
+
+  useEffect(() => { fetchLogs(); }, []);
 
   const reanalyzeSingle = async (log: JobLog) => {
     setReanalyzingById(prev => ({ ...prev, [log._id]: true }));
     setReanalyzeMessageById(prev => ({ ...prev, [log._id]: '' }));
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setReanalyzeMessageById(prev => ({ ...prev, [log._id]: 'Missing auth token. Please log in again.' }));
-        return;
-      }
-
       const identifier = encodeURIComponent(log.JobID || log._id);
-      const response = await fetch(`/api/jobs/admin/reanalyze/${identifier}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to re-analyze this job');
-      }
+      const payload = await apiPost<any>(`/api/jobs/admin/reanalyze/${identifier}`);
 
       if (payload?.skipped) {
         setReanalyzeMessageById(prev => ({ ...prev, [log._id]: payload.reason || 'Skipped due to manual review.' }));
@@ -117,19 +80,15 @@ export default function JobTestLogs() {
 
       const updatedJob = payload?.job;
       if (updatedJob) {
-        setLogs(previous => previous.map(item => {
-          if (item._id !== log._id) return item;
-          return {
+        setLogs(prev => prev.map(item =>
+          item._id !== log._id ? item : {
             ...item,
             GermanRequired: Boolean(updatedJob.GermanRequired),
-            ConfidenceScore: typeof updatedJob.ConfidenceScore === 'number'
-              ? updatedJob.ConfidenceScore
-              : item.ConfidenceScore,
+            ConfidenceScore: typeof updatedJob.ConfidenceScore === 'number' ? updatedJob.ConfidenceScore : item.ConfidenceScore,
             Status: updatedJob.Status || item.Status,
-          };
-        }));
+          }
+        ));
       }
-
       setReanalyzeMessageById(prev => ({ ...prev, [log._id]: 'Re-analysis complete.' }));
     } catch (e) {
       console.error(e);
@@ -156,12 +115,8 @@ export default function JobTestLogs() {
       style={{
         border: selectedLogId === log._id ? '1px solid var(--acid)' : '1px solid var(--border)',
         background: selectedLogId === log._id ? 'var(--acid-soft)' : 'var(--bg-surface-2)',
-        borderRadius: 10,
-        padding: 12,
-        textAlign: 'left',
-        cursor: 'pointer',
-        width: '100%',
-        transition: 'all 0.15s ease'
+        borderRadius: 10, padding: 12, textAlign: 'left', cursor: 'pointer', width: '100%',
+        transition: 'background 0.15s, border-color 0.15s',
       }}
     >
       <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.35, whiteSpace: 'normal', wordBreak: 'break-word' }}>
@@ -235,26 +190,20 @@ export default function JobTestLogs() {
                   style={{ paddingLeft: 36, width: '100%' }}
                 />
               </div>
-              
+
               <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
                 {CONTENT.admin.jobTestLogs.decisions.map(decision => (
                   <button
                     key={decision}
                     onClick={() => setFilterDecision(decision as any)}
                     style={{
-                      padding: '9px 16px',
-                      borderRadius: 8,
+                      padding: '9px 16px', borderRadius: 8,
                       border: '1px solid var(--border)',
                       background: filterDecision === decision ? 'var(--acid-dim)' : 'transparent',
                       color: filterDecision === decision ? 'var(--acid)' : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      transition: 'all 0.15s',
-                      fontFamily: 'inherit',
-                      textTransform: 'capitalize',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0
+                      cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                      transition: 'background 0.15s', fontFamily: 'inherit',
+                      textTransform: 'capitalize', whiteSpace: 'nowrap', flexShrink: 0,
                     }}
                   >
                     {decision}
@@ -270,27 +219,26 @@ export default function JobTestLogs() {
             {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 148, borderRadius: 12 }} />)}
           </div>
         ) : error ? (
-           <EmptyState 
-              icon={<AlertCircle size={32} />} 
-              title={CONTENT.admin.jobTestLogs.states.unableTitle} 
-              body={CONTENT.admin.jobTestLogs.states.unableBody}
-            />
-         ) : filtered.length === 0 ? (
-          <EmptyState 
-            icon={<FileText size={32} />} 
-            title={CONTENT.admin.jobTestLogs.states.noLogsTitle} 
-            body={logs.length === 0 ? CONTENT.admin.jobTestLogs.states.noLogsBody : CONTENT.admin.jobTestLogs.states.adjustFiltersBody} 
+          <EmptyState
+            icon={<AlertCircle size={32} />}
+            title={CONTENT.admin.jobTestLogs.states.unableTitle}
+            body={CONTENT.admin.jobTestLogs.states.unableBody}
+          />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={<FileText size={32} />}
+            title={CONTENT.admin.jobTestLogs.states.noLogsTitle}
+            body={logs.length === 0 ? CONTENT.admin.jobTestLogs.states.noLogsBody : CONTENT.admin.jobTestLogs.states.adjustFiltersBody}
           />
         ) : (
           <>
-            {/* Desktop split view */}
             <div
               ref={splitViewRef}
               style={{
                 gap: 14, flex: 1, minHeight: 0,
                 height: desktopSplitHeight,
                 display: isMobile ? 'none' : 'grid',
-                gridTemplateColumns: 'minmax(320px, 350px) minmax(400px, 1fr)'
+                gridTemplateColumns: 'minmax(320px, 350px) minmax(400px, 1fr)',
               }}
             >
               <section style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface)', minHeight: 0, height: desktopSplitHeight, overflowY: 'auto' }}>
@@ -306,12 +254,10 @@ export default function JobTestLogs() {
               </section>
             </div>
 
-            {/* Mobile list */}
             <div style={{ display: isMobile ? 'flex' : 'none', flexDirection: 'column', gap: 8 }}>
               {filtered.map(log => renderLogListItem(log, () => openMobileDetail(log._id)))}
             </div>
 
-            {/* Mobile overlay */}
             {mobileDetailOpen && selectedLog && (
               <MobileDetailOverlay onBack={closeMobileDetail}>
                 {renderLogDetail(selectedLog)}

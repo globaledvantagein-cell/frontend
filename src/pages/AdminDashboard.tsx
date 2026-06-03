@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { ClipboardList, RefreshCw, ArrowRight, FlaskConical, Globe, Trash2 } from 'lucide-react';
 import { Container, PageHeader, Button, StatCard } from '../components/ui';
+import { apiGet, apiPost } from '../utils/jobApi';
 
 interface CleanSummary { total: number; cleaned: number; alreadyClean: number; }
 interface BackfillSummary { total: number; updated: number; logsTotal: number; logsUpdated: number; message: string; }
@@ -10,7 +10,7 @@ interface SalaryFixSummary { total: number; fixed: number; }
 interface DbCounts { testLogs: number; pendingReview: number; activeJobs: number; rejectedJobs: number; }
 
 export default function AdminDashboard() {
-  const { token } = useAuth();
+  // auth state — not used directly; ProtectedRoute already ensures admin access
   const [counts, setCounts] = useState<DbCounts | null>(null);
   const [countsLoading, setCountsLoading] = useState(true);
   const [cleaning, setCleaning] = useState(false);
@@ -23,24 +23,20 @@ export default function AdminDashboard() {
   const fetchCounts = async () => {
     setCountsLoading(true);
     try {
-      const r = await fetch('/api/analytics/counts');
-      if (r.ok) setCounts(await r.json());
-    } catch (e) { console.error('Failed to fetch DB counts:', e); } finally { setCountsLoading(false); }
+      const data = await apiGet<DbCounts>('/api/analytics/counts', { noAuth: true });
+      setCounts(data);
+    } catch (e) { console.error('Failed to fetch DB counts:', e); }
+    finally { setCountsLoading(false); }
   };
 
-  useEffect(() => { fetchCounts(); }, [token]);
+  useEffect(() => { fetchCounts(); }, []);
 
   const cleanDescriptions = async () => {
     if (!window.confirm('This will strip any remaining HTML from all job descriptions. Continue?')) return;
     setCleaning(true);
     setCleanSummary(null);
     try {
-      const response = await fetch('/api/jobs/admin/clean-descriptions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'Failed to clean descriptions');
+      const payload = await apiPost<CleanSummary>('/api/jobs/admin/clean-descriptions');
       setCleanSummary(payload);
     } catch (error) {
       console.error(error);
@@ -54,12 +50,7 @@ export default function AdminDashboard() {
     setBackfilling(true);
     setBackfillSummary(null);
     try {
-      const response = await fetch('/api/jobs/admin/backfill-experience', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'Failed to backfill experience levels');
+      const payload = await apiPost<BackfillSummary>('/api/jobs/admin/backfill-experience');
       setBackfillSummary(payload);
     } catch (error) {
       console.error(error);
@@ -73,12 +64,7 @@ export default function AdminDashboard() {
     setFixingSalaries(true);
     setSalaryFixSummary(null);
     try {
-      const response = await fetch('/api/jobs/admin/fix-salaries', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'Failed to fix salaries');
+      const payload = await apiPost<SalaryFixSummary>('/api/jobs/admin/fix-salaries');
       setSalaryFixSummary(payload);
     } catch (error) {
       console.error(error);

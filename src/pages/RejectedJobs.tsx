@@ -8,6 +8,7 @@ import MobileDetailOverlay from '../components/MobileDetailOverlay';
 import { formatPostedDate, relativeDate } from '../utils/date';
 import { parseAllLocations, getPrimaryLocation, isMeaningful, normalizeWorkplace } from '../utils/job';
 import { useSplitView } from '../hooks/useSplitView';
+import { apiGet, apiPatch } from '../utils/jobApi';
 
 export default function RejectedJobs() {
   const [jobs, setJobs] = useState<IJob[]>([]);
@@ -17,69 +18,61 @@ export default function RejectedJobs() {
     selectedItem: selectedJob,
     selectedId: selectedJobId,
     setSelectedId: setSelectedJobId,
-    mobileDetailOpen,
-    openMobileDetail,
-    closeMobileDetail,
-    splitViewRef,
-    itemRefs: desktopJobRefs,
-    desktopSplitHeight,
-    isMobile,
-  } = useSplitView(jobs, {
-    recalcDeps: [loading],
-    bottomPadding: 32,
-  });
-
-  useEffect(() => { fetchRejected(); }, []);
+    mobileDetailOpen, openMobileDetail, closeMobileDetail,
+    splitViewRef, itemRefs: desktopJobRefs, desktopSplitHeight, isMobile,
+  } = useSplitView(jobs, { recalcDeps: [loading], bottomPadding: 32 });
 
   const fetchRejected = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const r = await fetch('/api/jobs/rejected', { headers: { 'Authorization': `Bearer ${token}` } });
-      const d = await r.json(); 
-      const fetchedJobs = Array.isArray(d) ? d : [];
-      setJobs(fetchedJobs);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+      const d = await apiGet<IJob[]>('/api/jobs/rejected');
+      setJobs(Array.isArray(d) ? d : []);
+    } catch (e) {
+      console.error('[RejectedJobs]', e);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => { fetchRejected(); }, []);
 
   const handleRestore = async (id: string) => {
     setJobs(p => p.filter(j => j._id !== id));
     if (selectedJobId === id) setSelectedJobId(jobs[0]?._id ?? '');
-    const token = localStorage.getItem('token');
-    await fetch(`/api/jobs/admin/restore/${id}`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` } });
+    try {
+      await apiPatch(`/api/jobs/admin/restore/${id}`);
+    } catch (err) {
+      console.error('[RejectedJobs] restore failed', err);
+    }
   };
 
   const handleExportCSV = () => {
     if (jobs.length === 0) return;
-    
     const headers = ['JobID', 'JobTitle', 'Company', 'Description'];
-    const rows = jobs.map(job => {
-      return [
-        `"${job.JobID || job._id}"`,
-        `"${(job.JobTitle || '').replace(/"/g, '""')}"`,
-        `"${(job.Company || '').replace(/"/g, '""')}"`,
-        `"${(job.Description || '').replace(/"/g, '""')}"`
-      ].join(',');
-    });
-    
+    const rows = jobs.map(job => [
+      `"${job.JobID || job._id}"`,
+      `"${(job.JobTitle || '').replace(/"/g, '""')}"`,
+      `"${(job.Company || '').replace(/"/g, '""')}"`,
+      `"${(job.Description || '').replace(/"/g, '""')}"`,
+    ].join(','));
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `rejected_jobs_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)', padding: '32px 0', flexShrink: 0 }}>
         <Container size="lg">
-          <PageHeader 
-            label={CONTENT.admin.label} 
+          <PageHeader
+            label={CONTENT.admin.label}
             title={<span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Trash2 size={22} color="var(--danger)" />{CONTENT.admin.rejectedJobs.title}</span>}
             subtitle={CONTENT.admin.rejectedJobs.subtitle(jobs.length)}
             actions={
@@ -105,14 +98,12 @@ export default function RejectedJobs() {
           <EmptyState icon={<Trash2 size={32} />} title={CONTENT.admin.rejectedJobs.empty.title} body={CONTENT.admin.rejectedJobs.empty.body} />
         ) : (
           <>
-            {/* Desktop split view */}
             <div
               ref={splitViewRef}
               style={{
-                gap: 14, flex: 1, minHeight: 0,
-                height: desktopSplitHeight,
+                gap: 14, flex: 1, minHeight: 0, height: desktopSplitHeight,
                 display: isMobile ? 'none' : 'grid',
-                gridTemplateColumns: 'minmax(320px, 350px) minmax(400px, 1fr)'
+                gridTemplateColumns: 'minmax(320px, 350px) minmax(400px, 1fr)',
               }}
             >
               <section style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface)', minHeight: 0, height: desktopSplitHeight, overflowY: 'auto' }}>
@@ -121,7 +112,6 @@ export default function RejectedJobs() {
                     const selected = selectedJobId === job._id;
                     const wp = normalizeWorkplace(job.WorkplaceType);
                     const showWp = wp === 'Remote' || wp === 'Hybrid';
-
                     return (
                       <button
                         key={job._id}
@@ -156,7 +146,6 @@ export default function RejectedJobs() {
               </section>
             </div>
 
-            {/* Mobile list */}
             <div style={{ display: isMobile ? 'flex' : 'none', flexDirection: 'column', gap: 8 }}>
               {jobs.map(job => (
                 <button
@@ -172,7 +161,6 @@ export default function RejectedJobs() {
               ))}
             </div>
 
-            {/* Mobile overlay */}
             {mobileDetailOpen && selectedJob && (
               <MobileDetailOverlay onBack={closeMobileDetail}>
                 <AdminJobDetail job={selectedJob} onRestore={handleRestore} />
@@ -214,24 +202,20 @@ function AdminJobDetail({ job, onRestore }: { job: IJob; onRestore: (id: string)
           {isMeaningful(job.ExperienceLevel) && job.ExperienceLevel !== 'N/A' && <Badge variant="neutral">{job.ExperienceLevel}</Badge>}
           {isMeaningful(job.EmploymentType) && <Badge variant="neutral">{job.EmploymentType}</Badge>}
         </div>
-        
+
         {job.RejectionReason && (
-           <div style={{ marginTop: 12, padding: 10, background: 'rgba(239, 68, 68, 0.05)', border: '1px solid var(--danger)', borderRadius: 8 }}>
+          <div style={{ marginTop: 12, padding: 10, background: 'rgba(239, 68, 68, 0.05)', border: '1px solid var(--danger)', borderRadius: 8 }}>
             <p style={{ fontSize: '0.82rem', color: 'var(--danger)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                AI Rejection Reason:
+              AI Rejection Reason:
             </p>
             <p style={{ fontSize: '0.82rem', color: 'var(--danger)', marginTop: 4 }}>{job.RejectionReason}</p>
           </div>
         )}
 
         <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 16 }}>
-          <Button size="sm" onClick={() => onRestore(job._id)} variant="outline">
-             Restore to Queue
-          </Button>
+          <Button size="sm" onClick={() => onRestore(job._id)} variant="outline">Restore to Queue</Button>
           <a href={job.ApplicationURL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-            <Button size="sm" variant="ghost">
-                View Source <ExternalLink size={12} />
-            </Button>
+            <Button size="sm" variant="ghost">View Source <ExternalLink size={12} /></Button>
           </a>
         </div>
       </div>

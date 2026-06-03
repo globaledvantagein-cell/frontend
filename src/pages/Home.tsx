@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-// ...existing code...
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import HomeJobCard from '../components/HomeJobCard';
@@ -9,9 +8,9 @@ import { Button, Container } from '../components/ui';
 import { BRAND } from '../theme/brand';
 import { CONTENT } from '../theme/content';
 import { useAuth } from '../context/AuthContext';
+import { apiGet } from '../utils/jobApi';
 
 const TICKER = CONTENT.home.ticker;
-// ...existing code...
 
 export default function Home() {
   const { isAuthenticated, token } = useAuth();
@@ -24,9 +23,12 @@ export default function Home() {
     document.title = `${BRAND.fullName} | ${BRAND.tagline}`;
     (async () => {
       try {
-        const [jr, dr] = await Promise.all([fetch('/api/jobs?limit=6'), fetch('/api/jobs/directory')]);
-        const jd = await jr.json(); setJobs(jd.jobs || []);
-        const dd = await dr.json(); if (Array.isArray(dd)) setCompanies(dd.slice(0, 8));
+        const [jd, dd] = await Promise.all([
+          apiGet<{ jobs?: IJob[] }>('/api/jobs?limit=6', { noAuth: true }),
+          apiGet<ICompany[]>('/api/jobs/directory', { noAuth: true }),
+        ]);
+        setJobs(jd.jobs || []);
+        if (Array.isArray(dd)) setCompanies(dd.slice(0, 8));
       } catch (e) { console.error(e); } finally { setLoading(false); }
     })();
   }, []);
@@ -34,14 +36,9 @@ export default function Home() {
   // Check subscription status for logged-in users
   useEffect(() => {
     if (!isAuthenticated || !token) return;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) return;
-        const profile = await res.json();
-        if (profile.isSubscribed) setIsSubscribed(true);
-      } catch { /* ignore */ }
-    })();
+    apiGet<any>('/api/auth/me')
+      .then(profile => { if (profile.isSubscribed) setIsSubscribed(true); })
+      .catch(() => {});
   }, [isAuthenticated, token]);
 
 
