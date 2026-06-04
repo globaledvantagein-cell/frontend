@@ -44,7 +44,10 @@ export default function EmailPreferences({ profile, loadError, onProfileUpdated 
         isSubscribed: subscribed,
       });
       handleApiResponse(updated);
-      setSaveMsg({ type: 'success', text: 'Preferences updated.' });
+      setSaveMsg({ type: 'success', text: subscribed && !profile.isSubscribed
+        ? 'Subscribed! Check your email for confirmation.'
+        : 'Preferences updated.'
+      });
     } catch (e: any) {
       setSaveMsg({ type: 'error', text: e.message || 'Something went wrong.' });
     } finally {
@@ -54,21 +57,29 @@ export default function EmailPreferences({ profile, loadError, onProfileUpdated 
 
   const toggleSubscription = async () => {
     const next = !subscribed;
-    setSubscribed(next);
-    setSaving(true);
     setSaveMsg(null);
-    try {
-      const updated = await apiPatch<ProfileData>('/api/auth/preferences', { isSubscribed: next });
-      handleApiResponse(updated);
-      setSaveMsg({
-        type: 'success',
-        text: next ? 'Subscribed to weekly digest.' : 'Unsubscribed. You will no longer receive weekly emails.',
-      });
-    } catch {
-      setSubscribed(!next); // revert
-      setSaveMsg({ type: 'error', text: 'Could not update subscription.' });
-    } finally {
-      setSaving(false);
+
+    if (next) {
+      // Subscribing → just toggle local state, show category picker.
+      // User must pick categories and click "Save changes" to confirm.
+      setSubscribed(true);
+      setSaveMsg({ type: 'success', text: 'Select your job categories below, then hit Save changes.' });
+    } else {
+      // Unsubscribing → call API immediately (no categories needed).
+      setSaving(true);
+      try {
+        const updated = await apiPatch<ProfileData>('/api/auth/preferences', { isSubscribed: false });
+        handleApiResponse(updated);
+        setSaveMsg({
+          type: 'success',
+          text: 'Unsubscribed. You will no longer receive weekly emails.',
+        });
+      } catch {
+        setSubscribed(true); // revert
+        setSaveMsg({ type: 'error', text: 'Could not update subscription.' });
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
