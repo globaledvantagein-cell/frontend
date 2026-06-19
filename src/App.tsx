@@ -10,6 +10,7 @@ import Home from './pages/Home';
 // Pages used by anonymous browsers are loaded eagerly. Everything else is
 // code-split so the public bundle stays small.
 const CompanyDirectory = lazy(() => import('./pages/CompanyDirectory'));
+const JobSharePage     = lazy(() => import('./pages/JobSharePage'));
 const Dashboard        = lazy(() => import('./pages/Dashboard'));
 const Login            = lazy(() => import('./pages/Login'));
 const Alerts           = lazy(() => import('./pages/Alerts'));
@@ -50,6 +51,7 @@ export default function App() {
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
                 <Route path="directory" element={<CompanyDirectory />} />
+                <Route path="jobs/:id" element={<JobSharePage />} />
                 <Route path="jobs"      element={<Dashboard />} />
                 <Route path="login"     element={<Login />} />
 

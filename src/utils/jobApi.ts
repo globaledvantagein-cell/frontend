@@ -180,3 +180,40 @@ export type JobDetailResponse =
 export async function fetchJobDetail(jobId: string, opts?: RequestOpts): Promise<JobDetailResponse> {
     return apiGet<JobDetailResponse>(`/api/jobs/${encodeURIComponent(jobId)}/full`, opts);
 }
+
+/**
+ * Cached variant of fetchJobDetail — for the /jobs/:id share page.
+ *
+ * Authenticated users are never gated, so we cache aggressively in both
+ * memory (10 min) and localStorage (5 min). Opening 10 shared links in
+ * a row costs 10 network calls the first time; revisiting any is instant.
+ *
+ * Anonymous users may be gated after FREE_VIEW_LIMIT. We cache in memory
+ * only (5 min) so the gate decision clears on page refresh (which happens
+ * after the signup redirect). Re-opening the SAME job within 5 min is a
+ * cache hit; opening a NEW job always hits the network so the backend can
+ * track the view count.
+ */
+export async function fetchJobDetailCached(
+    jobId: string,
+    isAuthenticated: boolean,
+    opts?: CachedRequestOpts,
+): Promise<JobDetailResponse> {
+    const path = `/api/jobs/${encodeURIComponent(jobId)}/full`;
+
+    if (isAuthenticated) {
+        return apiGetCached<JobDetailResponse>(path, {
+            memoryTtlMs: 10 * 60 * 1000,
+            localTtlMs:  5 * 60 * 1000,
+            ...(opts || {}),
+        });
+    }
+
+    // Anonymous: memory-only (localStorage would survive signup page refresh
+    // and serve a stale { gated: true } response after the user signs in).
+    return apiGetCached<JobDetailResponse>(path, {
+        memoryTtlMs: 5 * 60 * 1000,
+        localTtlMs:  0,
+        ...(opts || {}),
+    });
+}

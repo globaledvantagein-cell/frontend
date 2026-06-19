@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, MapPin } from 'lucide-react';
+import { ExternalLink, MapPin, Share2, Check } from 'lucide-react';
 import type { IJob } from '../types';
 import FormattedDescription from './FormattedDescription';
 import { formatPostedDate } from '../utils/date';
@@ -19,7 +19,25 @@ interface Props {
 export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }: Props) {
   const [showAllLocations, setShowAllLocations] = useState(false);
   const [trackingApply, setTrackingApply] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { isAuthenticated } = useAuth();
+
+  const shareUrl = `${window.location.origin}/jobs/${job._id}`;
+
+  const handleShare = async () => {
+    const shareData = { title: `${job.JobTitle} at ${job.Company}`, url: shareUrl };
+    try {
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch { /* user cancelled or unsupported — fall through to clipboard */ }
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* rare clipboard failure — silent */ }
+  };
 
   const allLocations = parseAllLocations(job);
   const primaryLocation = getDisplayLocation(job);
@@ -111,6 +129,9 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
           <div className="flex items-center gap-2 flex-wrap">
             <Button size="sm" onClick={handleApplyNow} loading={trackingApply}>
               {isAuthenticated ? 'Apply Now' : 'Sign in to apply'} <ExternalLink size={12} />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleShare}>
+              {copied ? <><Check size={12} /> Copied!</> : <><Share2 size={12} /> Share</>}
             </Button>
             {job.GermanRequired === false && <Badge variant="acid">🇬🇧 English Only</Badge>}
           </div>
