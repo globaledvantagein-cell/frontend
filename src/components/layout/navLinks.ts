@@ -6,6 +6,7 @@ export const ADMIN_LINKS: ReadonlyArray<readonly [string, string]> = [
   ['/add',              'Add Job'],
   ['/rejected',         'Trash'],
   ['/feedback',         'Feedback'],
+  ['/resume-match',     'Matcher'],
 ];
 
 export const PUBLIC_LINKS: ReadonlyArray<readonly [string, string]> = [
