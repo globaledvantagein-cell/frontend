@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import MobileDetailOverlay from '../components/MobileDetailOverlay';
 import PublicJobDetail from '../components/PublicJobDetail';
+import JobDetailSkeleton from '../components/JobDetailSkeleton';
 import SignupGate from '../components/SignupGate';
 import { Button, Container, EmptyState } from '../components/ui';
 import { DashboardFilterBar, MobileFilterSheet } from '../components/DashboardFilterBar';
@@ -162,13 +163,7 @@ export default function Dashboard() {
       );
     }
     if (detailLoading && !fullJob && !gated) {
-      return (
-        <div className="flex flex-col gap-3" style={{ padding: 4 }}>
-          <div className="skeleton" style={{ height: 24, width: '60%', borderRadius: 6 }} />
-          <div className="skeleton" style={{ height: 14, width: '40%', borderRadius: 4 }} />
-          <div className="skeleton" style={{ height: 120, marginTop: 8, borderRadius: 8 }} />
-        </div>
-      );
+      return <JobDetailSkeleton />;
     }
     if (gated) {
       return <SignupGate teaser={gatedTeaser || selectedTeaser || undefined} onAuthSuccess={refetchDetail} />;

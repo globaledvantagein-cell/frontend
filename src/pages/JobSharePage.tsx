@@ -18,6 +18,7 @@ import { ArrowLeft, Briefcase } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { fetchJobDetailCached } from '../utils/jobApi';
 import PublicJobDetail from '../components/PublicJobDetail';
+import JobDetailSkeleton from '../components/JobDetailSkeleton';
 import SignupGate from '../components/SignupGate';
 import { Container } from '../components/ui';
 import { BRAND } from '../theme/brand';
@@ -76,12 +77,7 @@ export default function JobSharePage() {
   const renderContent = () => {
     // 1. Still loading
     if (loading || authLoading) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div className="skeleton" style={{ height: 200, borderRadius: 12 }} />
-          <div className="skeleton" style={{ height: 300, borderRadius: 12 }} />
-        </div>
-      );
+      return <JobDetailSkeleton />;
     }
 
     // 2. Error / not found
