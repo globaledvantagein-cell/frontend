@@ -18,7 +18,6 @@ interface Props {
 
 export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }: Props) {
   const [showAllLocations, setShowAllLocations] = useState(false);
-  const [trackingApply, setTrackingApply] = useState(false);
   const [copied, setCopied] = useState(false);
   const { isAuthenticated } = useAuth();
 
@@ -48,32 +47,13 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
 
   // Apply requires auth — even if the user is under the view limit,
   // applying is the highest-value action and is always gated.
-  const handleApplyNow = async () => {
-    if (!isAuthenticated) {
-      onAuthRequired?.();
-      return;
-    }
+  const applyTarget = job.DirectApplyURL || job.ApplicationURL;
 
-    // Open the URL SYNCHRONOUSLY from the job prop — no awaits before
-    // window.open(). Mobile browsers kill window.open() after any await
-    // because the user-gesture token is already spent. The URL is already
-    // on the job object (from the /full endpoint), so we don't need the
-    // backend to tell us where to go. The backend call is just for tracking.
-    const target = job.DirectApplyURL || job.ApplicationURL;
-    if (target) {
-      window.open(target, '_blank', 'noopener,noreferrer');
-    }
-
-    // Track the click in the background — non-blocking, no navigation dependency
-    try {
-      setTrackingApply(true);
-      const result = await apiPost<{ applyClicks: number }>(`/api/jobs/${job._id}/apply-click`, {});
-      onApplyTracked?.(job._id, result.applyClicks ?? 0);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setTrackingApply(false);
-    }
+  const handleApplyClick = () => {
+    // Track the click in the background — don't block navigation
+    apiPost<{ applyClicks: number }>(`/api/jobs/${job._id}/apply-click`, {})
+      .then(result => onApplyTracked?.(job._id, result.applyClicks ?? 0))
+      .catch(console.error);
   };
 
   return (
@@ -127,9 +107,15 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
 
         <div className="flex items-center justify-between flex-wrap gap-2" style={{ marginTop: 10 }}>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button size="sm" onClick={handleApplyNow} loading={trackingApply}>
-              {isAuthenticated ? 'Apply Now' : 'Sign in to apply'} <ExternalLink size={12} />
-            </Button>
+            {isAuthenticated ? (
+              <Button as="a" href={applyTarget} target="_blank" rel="noopener noreferrer" size="sm" onClick={handleApplyClick}>
+                Apply Now <ExternalLink size={12} />
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => onAuthRequired?.()}>
+                Sign in to apply <ExternalLink size={12} />
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={handleShare}>
               {copied ? <><Check size={12} /> Copied!</> : <><Share2 size={12} /> Share</>}
             </Button>

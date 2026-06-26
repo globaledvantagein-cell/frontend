@@ -26,7 +26,7 @@ const BTN_VARIANT: Record<Variant, CSSProperties> = {
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant; size?: Size; loading?: boolean; as?: 'button' | 'a'; href?: string; children: ReactNode;
+  variant?: Variant; size?: Size; loading?: boolean; as?: 'button' | 'a'; href?: string; target?: string; rel?: string; children: ReactNode;
 }
 export function Button({ variant = 'primary', size = 'md', loading, children, style, as: Tag = 'button', href, className = '', ...rest }: ButtonProps & { className?: string }) {
   const sketchClass = (variant === 'ghost' || variant === 'outline') ? 'sketch-ink marker-hover' : '';
