@@ -54,34 +54,22 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
       return;
     }
 
-    // Open the tab SYNCHRONOUSLY inside the tap gesture. Mobile browsers
-    // block window.open() once it's called after an `await` (the gesture
-    // token is already spent) — that's why Apply did nothing on mobile while
-    // working on desktop. We open a blank tab now and redirect it once the
-    // backend returns the real URL. opener is severed for noopener safety.
-    const applyTab = window.open('', '_blank');
-    if (applyTab) applyTab.opener = null;
+    // Open the URL SYNCHRONOUSLY from the job prop — no awaits before
+    // window.open(). Mobile browsers kill window.open() after any await
+    // because the user-gesture token is already spent. The URL is already
+    // on the job object (from the /full endpoint), so we don't need the
+    // backend to tell us where to go. The backend call is just for tracking.
+    const target = job.DirectApplyURL || job.ApplicationURL;
+    if (target) {
+      window.open(target, '_blank', 'noopener,noreferrer');
+    }
 
+    // Track the click in the background — non-blocking, no navigation dependency
     try {
       setTrackingApply(true);
-      // Backend returns the real ApplicationURL since the list endpoint
-      // strips it. Open AFTER we get the URL back.
-      const result = await apiPost<{
-        applyClicks: number;
-        applicationUrl: string;
-        directApplyUrl: string | null;
-      }>(`/api/jobs/${job._id}/apply-click`, {});
-
-      const target = result.directApplyUrl || result.applicationUrl;
-      if (target) {
-        if (applyTab) applyTab.location.href = target;
-        else window.open(target, '_blank', 'noopener,noreferrer');
-      } else if (applyTab) {
-        applyTab.close();
-      }
+      const result = await apiPost<{ applyClicks: number }>(`/api/jobs/${job._id}/apply-click`, {});
       onApplyTracked?.(job._id, result.applyClicks ?? 0);
     } catch (err) {
-      if (applyTab) applyTab.close();
       console.error(err);
     } finally {
       setTrackingApply(false);
