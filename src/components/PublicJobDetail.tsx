@@ -6,6 +6,7 @@ import { formatPostedDate } from '../utils/date';
 import { parseAllLocations, isMeaningful, normalizeWorkplace, detailedSalary, getDisplayLocation } from '../utils/job';
 import { Badge, Button } from './ui';
 import { useAuth } from '../context/AuthContext';
+import { useAppliedJobs } from '../context/AppliedJobsContext';
 import { apiPost } from '../utils/jobApi';
 
 interface Props {
@@ -20,6 +21,8 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
   const [showAllLocations, setShowAllLocations] = useState(false);
   const [copied, setCopied] = useState(false);
   const { isAuthenticated } = useAuth();
+  const { isApplied, addPending } = useAppliedJobs();
+  const applied = isApplied(job._id);
 
   const shareUrl = `${window.location.origin}/jobs/${job._id}`;
 
@@ -50,6 +53,9 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
   const applyTarget = job.DirectApplyURL || job.ApplicationURL;
 
   const handleApplyClick = () => {
+    // Queue for "Did you apply?" confirmation toast on tab refocus
+    addPending(job._id, job.JobTitle, job.Company);
+
     // Track the click in the background — don't block navigation
     apiPost<{ applyClicks: number }>(`/api/jobs/${job._id}/apply-click`, {})
       .then(result => onApplyTracked?.(job._id, result.applyClicks ?? 0))
@@ -108,8 +114,12 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
         <div className="flex items-center justify-between flex-wrap gap-2" style={{ marginTop: 10 }}>
           <div className="flex items-center gap-2 flex-wrap">
             {isAuthenticated ? (
-              <Button as="a" href={applyTarget} target="_blank" rel="noopener noreferrer" size="sm" onClick={handleApplyClick}>
-                Apply Now <ExternalLink size={12} />
+              <Button
+                as="a" href={applyTarget} target="_blank" rel="noopener noreferrer" size="sm"
+                onClick={handleApplyClick}
+                style={applied ? { background: 'var(--success)', borderColor: 'var(--success)' } : undefined}
+              >
+                {applied ? <>Applied <Check size={12} /></> : <>Apply Now <ExternalLink size={12} /></>}
               </Button>
             ) : (
               <Button size="sm" onClick={() => onAuthRequired?.()}>

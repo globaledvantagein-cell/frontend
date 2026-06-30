@@ -7,6 +7,7 @@ import SignupGate from '../components/SignupGate';
 import { Button, Container, EmptyState } from '../components/ui';
 import { DashboardFilterBar, MobileFilterSheet } from '../components/DashboardFilterBar';
 import { DesktopJobCard, MobileJobCard } from '../components/jobs/JobListItem';
+import { useAppliedJobs } from '../context/AppliedJobsContext';
 import { BRAND } from '../theme/brand';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useJobFilters } from '../hooks/useJobFilters';
@@ -24,6 +25,8 @@ export default function Dashboard() {
     jobs, setJobs, totalJobs, hasMore,
     loading, loadingMore, loadMore, updateJob,
   } = useJobFilters(companyParam || undefined);
+
+  const { isApplied } = useAppliedJobs();
 
   const [selectedJobId,    setSelectedJobId]    = useState<string | null>(null);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
@@ -285,6 +288,7 @@ export default function Dashboard() {
                         ref={node => { desktopJobRefs.current[job._id] = node; }}
                         job={job}
                         selected={selectedJobId === job._id}
+                        applied={isApplied(job._id)}
                         onClick={handleDesktopClick(job._id)}
                       />
                     ))}
@@ -314,7 +318,7 @@ export default function Dashboard() {
           ) : jobs.length === 0 ? emptyState : (
             <>
               {jobs.map(job => (
-                <MobileJobCard key={job._id} job={job} onClick={handleMobileClick(job._id)} />
+                <MobileJobCard key={job._id} job={job} applied={isApplied(job._id)} onClick={handleMobileClick(job._id)} />
               ))}
               {loadMoreIndicator}
             </>

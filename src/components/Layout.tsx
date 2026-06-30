@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { LogOut, User as UserIcon, Menu, X, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAppliedJobs } from '../context/AppliedJobsContext';
 import { useTheme } from '../theme/ThemeProvider';
 import Footer from './Footer';
 import FeedbackWidget from './FeedbackWidget';
 import { Toast } from './Toast';
+import ApplyConfirmToast from './ApplyConfirmToast';
 import { Button, Badge } from './ui';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { apiGet } from '../utils/jobApi';
@@ -25,6 +27,33 @@ export default function Layout() {
   const isMobileNav = useMediaQuery('(max-width: 767px)');
 
   const hideFeedbackWidget = isAdmin || loc.pathname.startsWith('/admin');
+
+  // ── "Did you apply?" toast on tab refocus ───────────────────────────────
+  const { pendingItems, resolvePending } = useAppliedJobs();
+  const [applyToast, setApplyToast] = useState<{ jobId: string; jobTitle: string; company: string } | null>(null);
+
+  useEffect(() => {
+    const showNextPending = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (pendingItems.length > 0 && !applyToast) {
+        const latest = pendingItems[pendingItems.length - 1];
+        setApplyToast({ jobId: latest.jobId, jobTitle: latest.jobTitle, company: latest.company });
+      }
+    };
+
+    document.addEventListener('visibilitychange', showNextPending);
+    window.addEventListener('focus', showNextPending);
+
+    // Also check on mount (handles browser-killed-and-reopened scenario)
+    if (pendingItems.length > 0 && !applyToast) {
+      setTimeout(showNextPending, 1000);
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', showNextPending);
+      window.removeEventListener('focus', showNextPending);
+    };
+  }, [pendingItems, applyToast]);
 
   // ── Toast triggers from URL params ──────────────────────────────────────
   useEffect(() => {
@@ -201,6 +230,21 @@ export default function Layout() {
       />
 
       {toast && <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />}
+
+      {applyToast && (
+        <ApplyConfirmToast
+          jobTitle={applyToast.jobTitle}
+          company={applyToast.company}
+          onConfirm={() => {
+            resolvePending(applyToast.jobId, true);
+            setApplyToast(null);
+          }}
+          onDismiss={() => {
+            resolvePending(applyToast.jobId, false);
+            setApplyToast(null);
+          }}
+        />
+      )}
 
       <main style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }} role="main">
         <Outlet />

@@ -11,11 +11,12 @@ import { relativeDate } from '../../utils/date';
 interface DesktopProps {
   job: IJob;
   selected: boolean;
+  applied?: boolean;
   onClick: () => void;
 }
 
 export const DesktopJobCard = memo(
-  forwardRef<HTMLButtonElement, DesktopProps>(function DesktopJobCard({ job, selected, onClick }, ref) {
+  forwardRef<HTMLButtonElement, DesktopProps>(function DesktopJobCard({ job, selected, applied, onClick }, ref) {
     const salary = compactSalary(job);
     const wp = normalizeWorkplace(job.WorkplaceType);
     const showWp = wp === 'Remote' || wp === 'Hybrid';
@@ -37,8 +38,9 @@ export const DesktopJobCard = memo(
         <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {job.Company} | {getDisplayLocation(job)}
         </p>
-        {(showWp || salary) && (
+        {(showWp || salary || applied) && (
           <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
+            {applied && <Badge variant="green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>✓ Applied</Badge>}
             {showWp && <Badge variant="blue"  style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{wp}</Badge>}
             {salary && <Badge variant="green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{salary}</Badge>}
           </div>
@@ -50,10 +52,11 @@ export const DesktopJobCard = memo(
 
 interface MobileProps {
   job: IJob;
+  applied?: boolean;
   onClick: () => void;
 }
 
-export const MobileJobCard = memo(function MobileJobCard({ job, onClick }: MobileProps) {
+export const MobileJobCard = memo(function MobileJobCard({ job, applied, onClick }: MobileProps) {
   return (
     <button
       onClick={onClick}
@@ -66,6 +69,7 @@ export const MobileJobCard = memo(function MobileJobCard({ job, onClick }: Mobil
       <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3 }}>{job.JobTitle}</p>
       <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 4 }}>{job.Company} · {getDisplayLocation(job)}</p>
       <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: 3 }}>{relativeDate(job.PostedDate || job.scrapedAt)}</p>
+      {applied && <Badge variant="green" style={{ fontSize: '0.65rem', padding: '1px 6px', marginTop: 6 }}>✓ Applied</Badge>}
     </button>
   );
 });

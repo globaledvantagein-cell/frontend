@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
+import { AppliedJobsProvider } from './context/AppliedJobsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import Layout from './components/Layout';
@@ -47,6 +48,7 @@ export default function App() {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
         <BrowserRouter>
+          <AppliedJobsProvider>
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<Layout />}>
@@ -84,6 +86,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
+          </AppliedJobsProvider>
         </BrowserRouter>
       </AuthProvider>
     </GoogleOAuthProvider>
