@@ -13,6 +13,7 @@ import Home from './pages/Home';
 const CompanyDirectory = lazy(() => import('./pages/CompanyDirectory'));
 const JobSharePage     = lazy(() => import('./pages/JobSharePage'));
 const Dashboard        = lazy(() => import('./pages/Dashboard'));
+const AppliedJobs      = lazy(() => import('./pages/AppliedJobs'));
 const Login            = lazy(() => import('./pages/Login'));
 const Alerts           = lazy(() => import('./pages/Alerts'));
 const Profile          = lazy(() => import('./pages/Profile'));
@@ -56,6 +57,7 @@ export default function App() {
                 <Route path="directory" element={<CompanyDirectory />} />
                 <Route path="jobs/:id" element={<JobSharePage />} />
                 <Route path="jobs"      element={<Dashboard />} />
+                <Route path="applied"   element={<AppliedJobs />} />
                 <Route path="login"     element={<Login />} />
 
                 {/* Weekly job alerts — separate from auth. NOT a signup. */}

@@ -12,4 +12,5 @@ export const ADMIN_LINKS: ReadonlyArray<readonly [string, string]> = [
 export const PUBLIC_LINKS: ReadonlyArray<readonly [string, string]> = [
   ['/directory', 'Companies'],
   ['/jobs',      'Browse Jobs'],
+  ['/applied',   'Applied'],
 ];
