@@ -12,24 +12,27 @@ function scoreColor(tier: MatchTier): string {
   return TIER_ACCENT[tier];
 }
 
-function SkillRow({ icon, color, label, skills }: { icon: React.ReactNode; color: string; label: string; skills: string[] }) {
+function SkillRow({ icon, color, label, skills }: { icon: React.ReactNode; color: string; label: string; skills: (string | { name: string; category?: string })[] }) {
   if (!skills || skills.length === 0) return null;
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
       <span style={{ color, display: 'flex', marginTop: 2, flexShrink: 0 }} title={label}>{icon}</span>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-        {skills.map((s, i) => (
+        {skills.map((s, i) => {
+          const name = typeof s === 'string' ? s : s.name;
+          return (
           <span
-            key={`${s}-${i}`}
+            key={`${name}-${i}`}
             style={{
               fontSize: '0.76rem', fontWeight: 600, color: 'var(--ink)',
               background: 'var(--paper2)', border: '1px solid var(--border)',
               borderRadius: 6, padding: '2px 8px',
             }}
           >
-            {s}
+            {name}
           </span>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -34,20 +34,54 @@ export interface LanguageProficiency {
   proficiency: string;
 }
 
+export interface SkillEntry {
+  name: string;
+  category: string;
+}
+
+export interface ExperienceEntry {
+  company: string;
+  title: string;
+  startDate: string | null;
+  endDate: string | null;
+  isCurrent: boolean;
+  responsibilities: string[];
+  technologies: string[];
+}
+
+export interface EducationEntry {
+  institution: string;
+  degree: string;
+  field: string;
+  endDate: string | null;
+}
+
+export interface ProjectEntry {
+  name: string;
+  description: string;
+  technologies: string[];
+}
+
 export interface ResumeProfile {
   name: string | null;
-  current_role: string | null;
-  experience_years: number | null;
-  level: 'Entry' | 'Mid' | 'Senior' | 'Lead' | 'Executive' | null;
+  email: string | null;
+  phone: string | null;
+  linkedin_url: string | null;
+  summary: string;
+  experience: ExperienceEntry[];
+  education: EducationEntry[];
+  skills: SkillEntry[];
+  projects: ProjectEntry[];
+  total_experience_years: number | null;
+  seniority_level: 'Entry' | 'Mid' | 'Senior' | 'Lead' | 'Executive' | null;
   domain: string;
-  skills: string[];
+  sub_domain: string | null;
   languages: LanguageProficiency[];
   location: string | null;
   open_to_remote: boolean | null;
-  education: string | null;
+  open_to_relocate: boolean | null;
+  visa_required: boolean | null;
   certifications: string[];
-  industries: string[];
-  summary: string;
 }
 
 export type MatchTier = 'strong' | 'good' | 'partial';
@@ -71,11 +105,13 @@ export interface MatchResult {
   jobId: string;
   score: number;
   tier: MatchTier;
-  matched_skills: string[];
-  missing_skills: string[];
-  bonus_skills: string[];
+  matched_skills: (string | SkillEntry)[];
+  missing_skills: (string | SkillEntry)[];
+  bonus_skills: (string | SkillEntry)[];
   experience_fit: ExperienceFit;
   location_fit: LocationFit;
+  german_fit: string | null;
+  visa_fit: string | null;
   reasoning: string;
   job: MatchResultJob;
 }

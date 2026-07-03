@@ -27,7 +27,8 @@ const RejectedJobs    = lazy(() => import('./pages/RejectedJobs'));
 const AdminDashboard  = lazy(() => import('./pages/AdminDashboard'));
 const JobTestLogs     = lazy(() => import('./pages/JobTestLogs'));
 const AdminFeedback   = lazy(() => import('./pages/AdminFeedback'));
-const ResumeMatcher   = lazy(() => import('./pages/ResumeMatcher'));
+const ResumeMatcher   = lazy(() => import('./pages/SmartMatch'));
+const ResumeUploadPage = lazy(() => import('./pages/ResumeUploadPage'));
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const PROFILE_ENABLED  = import.meta.env.VITE_ENABLE_PROFILE === 'true';
@@ -83,6 +84,8 @@ export default function App() {
                   <Route path="test-logs"        element={<JobTestLogs />} />
                   <Route path="feedback"         element={<AdminFeedback />} />
                   <Route path="resume-match"     element={<ResumeMatcher />} />
+                  <Route path="smart-match"      element={<ResumeMatcher />} />
+                  <Route path="resume"           element={<ResumeUploadPage />} />
                 </Route>
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

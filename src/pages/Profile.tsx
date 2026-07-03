@@ -6,6 +6,8 @@ import { BRAND } from '../theme/brand';
 import { apiGet } from '../utils/jobApi';
 import IdentityCard from '../components/profile/IdentityCard';
 import EmailPreferences from '../components/profile/EmailPreferences';
+import JobPreferencesForm from '../components/profile/JobPreferencesForm';
+import ParsedResumeProfile from '../components/profile/ParsedResumeProfile';
 import type { ProfileData } from '../components/profile/profileTypes';
 
 /**
@@ -82,6 +84,9 @@ export default function Profile() {
 
       <IdentityCard data={display} isAdmin={isAdmin} />
 
+      {/* Parsed resume profile — experience, skills, education, projects */}
+      <ParsedResumeProfile />
+
       {profile && (
         <EmailPreferences
           profile={profile}
@@ -89,6 +94,9 @@ export default function Profile() {
           onProfileUpdated={setProfile}
         />
       )}
+
+      {/* Job matching preferences — salary, work style, visa, etc. */}
+      <JobPreferencesForm />
 
       {/* Coming-soon sections */}
       <div style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
