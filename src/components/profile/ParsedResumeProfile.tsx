@@ -91,7 +91,7 @@ export default function ParsedResumeProfile() {
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {skills.map((s, i) => (
-              <Badge key={`${s.name}-${i}`} variant="neutral" title={s.category}>{s.name}</Badge>
+              <Badge key={`${s.name}-${i}`} variant="neutral">{s.name}</Badge>
             ))}
           </div>
         </Card>

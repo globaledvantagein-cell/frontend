@@ -92,7 +92,7 @@ export default function ResumeUploadPage() {
           </div>
         ) : (
           <>
-            {error && <Alert type="error" style={{ marginBottom: 16 }}>{error}</Alert>}
+            {error && <div style={{ marginBottom: 16 }}><Alert type="error">{error}</Alert></div>}
 
             <div
               onClick={() => inputRef.current?.click()}
