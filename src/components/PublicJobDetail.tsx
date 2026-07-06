@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ExternalLink, MapPin, Share2, Check } from 'lucide-react';
 import type { IJob } from '../types';
 import FormattedDescription from './FormattedDescription';
@@ -63,14 +64,28 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface-2)', padding: 16, position: 'relative' }}>
-        <span style={{ position: 'absolute', right: 14, top: 14, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-surface-2)', padding: '12px 14px', position: 'relative' }}>
+        <span style={{ position: 'absolute', right: 12, top: 12, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           Posted: {formatPostedDate(job.PostedDate)}
         </span>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.2rem,2.6vw,1.55rem)', color: 'var(--text-primary)', marginBottom: 10, paddingRight: 80 }}>
+        <Link
+          to={`/jobs/${job._id}`}
+          style={{
+            fontFamily: "'Playfair Display',serif",
+            fontSize: 'clamp(1.15rem,2.4vw,1.45rem)',
+            color: 'var(--text-primary)',
+            textDecoration: 'none',
+            display: 'block',
+            marginBottom: 8,
+            paddingRight: 80,
+            lineHeight: 1.3,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--primary)'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+        >
           {job.JobTitle}
-        </h2>
+        </Link>
 
         <div className="flex items-center flex-wrap gap-2" style={{ marginBottom: 10 }}>
           <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>{job.Company}</span>
@@ -138,7 +153,7 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
         </div>
       </div>
 
-      <div style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-surface)', padding: 14 }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-surface)', padding: '10px 14px' }}>
         <FormattedDescription description={job.Description || ''} />
       </div>
     </div>

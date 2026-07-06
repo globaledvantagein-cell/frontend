@@ -98,7 +98,7 @@ export default function Dashboard() {
         return;
       }
       const top = splitViewRef.current.getBoundingClientRect().top;
-      setSplitHeight(Math.max(window.innerHeight - top - 16, 320));
+      setSplitHeight(Math.max(window.innerHeight - top - 4, 320));
     };
     const observer = new ResizeObserver(update);
     const nodes = [heroRef.current, filtersRef.current, splitViewRef.current].filter(Boolean) as Element[];
@@ -231,22 +231,11 @@ export default function Dashboard() {
 
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <div ref={heroRef} style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)', padding: '24px 0', flexShrink: 0 }}>
-        <Container>
-          <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, textAlign: 'center' }}>
-            {BRAND.appName}
-          </p>
-          <h1 style={{ fontSize: 'clamp(1.45rem, 3.8vw, 2rem)', fontFamily: "'Playfair Display',serif", color: 'var(--text-primary)', textAlign: 'center' }}>
-            Browse English-Speaking Roles
-          </h1>
-          <p key={`${jobs.length}-${loading}`} style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: 6, animation: 'fadeIn 0.3s ease both', textAlign: 'center' }}>
-            {loading ? 'Loading…' : `${jobs.length} of ${totalJobs} roles available`}
-          </p>
-        </Container>
-      </div>
+      {/* Hero removed — filters are the first thing visible */}
+      <div ref={heroRef} style={{ display: 'none' }} />
 
-      <Container style={{ padding: '20px 24px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <div ref={filtersRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 14, flexShrink: 0 }}>
+      <Container style={{ padding: '10px 24px 0', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div ref={filtersRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 10, flexShrink: 0 }}>
           <DashboardFilterBar
             filters={filters} setFilters={setFilters}
             companyOptions={companyOptions} categoryOptions={categoryOptions}
@@ -269,17 +258,18 @@ export default function Dashboard() {
           />
         )}
 
-        <div ref={splitViewRef} className="split-grid" style={{ gap: 14, flex: 1, minHeight: 0, height: desktopSplitHeight }}>
+        <div ref={splitViewRef} className="split-grid" style={{ gap: 10, flex: 1, minHeight: 0, height: desktopSplitHeight }}>
           <section
             ref={listPanelRef}
+            className="thin-scroll"
             style={{
-              border: '1px solid var(--border)', borderRadius: 12,
+              border: '1px solid var(--border)', borderRadius: 10,
               background: 'var(--bg-surface)', minHeight: 0,
               height: desktopSplitHeight, overflowY: 'auto',
             }}
           >
             {loading ? skeletons : (
-              <div className="flex flex-col" style={{ gap: 8, padding: 12 }}>
+              <div className="flex flex-col" style={{ gap: 6, padding: '8px 8px' }}>
                 {jobs.length === 0 ? emptyState : (
                   <>
                     {jobs.map(job => (
@@ -300,9 +290,10 @@ export default function Dashboard() {
           </section>
 
           <section
+            className="thin-scroll"
             style={{
-              border: '1px solid var(--border)', borderRadius: 12,
-              background: 'var(--bg-surface)', padding: 16,
+              border: '1px solid var(--border)', borderRadius: 10,
+              background: 'var(--bg-surface)', padding: '10px 14px',
               minHeight: 0, height: desktopSplitHeight, overflowY: 'auto',
             }}
           >

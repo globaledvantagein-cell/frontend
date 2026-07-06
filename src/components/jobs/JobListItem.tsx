@@ -28,18 +28,18 @@ export const DesktopJobCard = memo(
         style={{
           border:     selected ? '1px solid var(--acid)' : '1px solid var(--border)',
           background: selected ? 'var(--acid-soft)' : 'var(--bg-surface-2)',
-          borderRadius: 10, padding: 12,
+          borderRadius: 8, padding: '10px 10px',
           textAlign: 'left', cursor: 'pointer', width: '100%',
         }}
       >
-        <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.35, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+        <p style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, whiteSpace: 'normal', wordBreak: 'break-word' }}>
           {job.JobTitle}
         </p>
-        <p style={{ fontSize: '0.77rem', color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {job.Company} | {getDisplayLocation(job)}
         </p>
         {(showWp || salary || applied) && (
-          <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
+          <div className="flex flex-wrap gap-1.5" style={{ marginTop: 6 }}>
             {applied && <Badge variant="green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>✓ Applied</Badge>}
             {showWp && <Badge variant="blue"  style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{wp}</Badge>}
             {salary && <Badge variant="green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{salary}</Badge>}
