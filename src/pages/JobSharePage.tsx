@@ -13,7 +13,7 @@
  * who have exceeded FREE_VIEW_LIMIT see a teaser + SignupGate.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Briefcase } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { fetchJobDetailCached } from '../utils/jobApi';
@@ -26,6 +26,7 @@ import type { IJob } from '../types';
 
 export default function JobSharePage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [job, setJob] = useState<IJob | null>(null);
@@ -153,23 +154,37 @@ export default function JobSharePage() {
     return null;
   };
 
+  // If the user arrived here from within the app (e.g. clicked a title on
+  // /jobs), window.history.length > 1. navigate(-1) restores the previous
+  // page WITH its scroll position and React state intact.
+  // If they landed directly (shared link, new tab), fall back to /jobs.
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/jobs');
+    }
+  };
+
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: '80vh' }}>
       <Container style={{ maxWidth: 800, padding: '24px 24px 48px' }}>
-        {/* Back link */}
-        <Link
-          to="/jobs"
+        {/* Back link — uses browser back to preserve scroll position */}
+        <button
+          onClick={handleBack}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             fontSize: '0.86rem', fontWeight: 600,
             color: 'var(--text-muted)', textDecoration: 'none',
             marginBottom: 20, transition: 'color 0.18s',
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: 0, fontFamily: 'inherit',
           }}
           onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; }}
           onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}
         >
           <ArrowLeft size={15} /> Back to all jobs
-        </Link>
+        </button>
 
         {renderContent()}
       </Container>

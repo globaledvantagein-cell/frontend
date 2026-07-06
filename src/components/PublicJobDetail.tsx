@@ -156,6 +156,36 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
       <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-surface)', padding: '10px 14px' }}>
         <FormattedDescription description={job.Description || ''} />
       </div>
+
+      {/* Bottom Apply bar — visible after reading the full JD */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 8,
+        border: '1px solid var(--border)', borderRadius: 10,
+        background: 'var(--bg-surface-2)', padding: '10px 14px',
+      }}>
+        <div className="flex items-center gap-2 flex-wrap">
+          {isAuthenticated ? (
+            <Button
+              as="a" href={applyTarget} target="_blank" rel="noopener noreferrer" size="sm"
+              onClick={handleApplyClick}
+              style={applied ? { background: 'var(--success)', borderColor: 'var(--success)' } : undefined}
+            >
+              {applied ? <>Applied <Check size={12} /></> : <>Apply Now <ExternalLink size={12} /></>}
+            </Button>
+          ) : (
+            <Button size="sm" onClick={() => onAuthRequired?.()}>
+              Sign in to apply <ExternalLink size={12} />
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={handleShare}>
+            {copied ? <><Check size={12} /> Copied!</> : <><Share2 size={12} /> Share</>}
+          </Button>
+        </div>
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          {job.applyClicks || 0} apply clicks
+        </span>
+      </div>
     </div>
   );
 }
