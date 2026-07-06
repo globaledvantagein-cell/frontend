@@ -154,7 +154,11 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
       </div>
 
       <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-surface)', padding: '10px 14px' }}>
-        <FormattedDescription description={job.Description || ''} />
+        {job.DescriptionHtml ? (
+          <div className="job-description-html" dangerouslySetInnerHTML={{ __html: job.DescriptionHtml }} />
+        ) : (
+          <FormattedDescription description={job.Description || ''} />
+        )}
       </div>
 
       {/* Bottom Apply bar — visible after reading the full JD */}
