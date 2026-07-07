@@ -12,11 +12,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, Upload, Wrench } from 'lucide-react';
-import { Badge, Button } from './ui';
+import {  Button } from './ui';
 import { useAuth } from '../context/AuthContext';
 import { fetchSkillMatches, type SkillMatchJob } from '../utils/skillMatchApi';
 import { getDisplayLocation } from '../utils/job';
-import { formatPostedDate } from '../utils/date';
 
 export default function SkillMatches() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
