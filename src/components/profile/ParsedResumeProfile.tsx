@@ -5,9 +5,9 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Upload, Briefcase, GraduationCap, FolderOpen, Wrench } from 'lucide-react';
+import { FileText, Upload, Briefcase, GraduationCap, FolderOpen, Wrench, Pencil, X, Plus, Check } from 'lucide-react';
 import { Card, Badge, Button } from '../ui';
-import { apiGet } from '../../utils/jobApi';
+import { apiGet, apiPatch } from '../../utils/jobApi';
 
 interface ParsedProfile {
   name?: string;
@@ -82,20 +82,10 @@ export default function ParsedResumeProfile() {
         )}
       </Card>
 
-      {/* Skills */}
-      {skills.length > 0 && (
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-            <Wrench size={15} style={{ color: 'var(--text-muted)' }} />
-            <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>Skills</h4>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {skills.map((s, i) => (
-              <Badge key={`${s.name}-${i}`} variant="neutral">{s.name}</Badge>
-            ))}
-          </div>
-        </Card>
-      )}
+      {/* Skills — editable */}
+      <SkillsCard skills={skills} onSkillsUpdated={(updated) => {
+        setProfile(prev => prev ? { ...prev, skills: updated } : prev);
+      }} />
 
       {/* Work Experience */}
       {experience.length > 0 && (
@@ -168,5 +158,150 @@ export default function ParsedResumeProfile() {
         </Card>
       )}
     </div>
+  );
+}
+
+// ── Editable Skills Card ───────────────────────────────────────────────────────
+interface Skill { name: string; category: string }
+
+function SkillsCard({ skills, onSkillsUpdated }: { skills: Skill[]; onSkillsUpdated: (s: Skill[]) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Skill[]>(skills);
+  const [newSkill, setNewSkill] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync draft when skills prop changes (e.g. after re-upload)
+  useEffect(() => { if (!editing) setDraft(skills); }, [skills, editing]);
+
+  const startEdit = () => { setDraft([...skills]); setEditing(true); setError(null); };
+
+  const cancel = () => { setDraft(skills); setEditing(false); setNewSkill(''); setError(null); };
+
+  const removeSkill = (idx: number) => {
+    setDraft(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const addSkill = () => {
+    const name = newSkill.trim();
+    if (!name) return;
+    // Prevent duplicates (case-insensitive)
+    if (draft.some(s => s.name.toLowerCase() === name.toLowerCase())) {
+      setError(`"${name}" already exists`);
+      return;
+    }
+    setDraft(prev => [...prev, { name, category: 'Other' }]);
+    setNewSkill('');
+    setError(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') { e.preventDefault(); addSkill(); }
+  };
+
+  const save = async () => {
+    if (draft.length === 0) {
+      setError('Add at least one skill');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPatch('/api/auth/skills', { skills: draft });
+      onSkillsUpdated(draft);
+      setEditing(false);
+    } catch {
+      setError('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Wrench size={15} style={{ color: 'var(--text-muted)' }} />
+          <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>Skills</h4>
+        </div>
+        {!editing && (
+          <Button variant="ghost" size="sm" onClick={startEdit}>
+            <Pencil size={12} /> Edit
+          </Button>
+        )}
+      </div>
+
+      {!editing ? (
+        skills.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {skills.map((s, i) => (
+              <Badge key={`${s.name}-${i}`} variant="neutral">{s.name}</Badge>
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            No skills yet. Click Edit to add your skills for better job matching.
+          </p>
+        )
+      ) : (
+        <>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            {draft.map((s, i) => (
+              <span
+                key={`${s.name}-${i}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: '0.78rem', padding: '3px 8px', borderRadius: 6,
+                  background: 'var(--bg-surface-2)', border: '1px solid var(--border)',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {s.name}
+                <button
+                  onClick={() => removeSkill(i)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    padding: 0, display: 'flex', color: 'var(--text-muted)',
+                  }}
+                  aria-label={`Remove ${s.name}`}
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+            <input
+              type="text"
+              value={newSkill}
+              onChange={e => setNewSkill(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a skill and press Enter"
+              style={{
+                flex: 1, padding: '6px 10px', fontSize: '0.82rem',
+                borderRadius: 6, border: '1px solid var(--border)',
+                background: 'var(--bg-surface)', color: 'var(--text-primary)',
+                outline: 'none',
+              }}
+            />
+            <Button size="sm" variant="ghost" onClick={addSkill} disabled={!newSkill.trim()}>
+              <Plus size={12} /> Add
+            </Button>
+          </div>
+
+          {error && <p style={{ fontSize: '0.78rem', color: 'var(--error)', marginBottom: 8 }}>{error}</p>}
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button size="sm" onClick={save} disabled={saving}>
+              <Check size={12} /> {saving ? 'Saving…' : 'Save'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={cancel} disabled={saving}>
+              Cancel
+            </Button>
+          </div>
+        </>
+      )}
+    </Card>
   );
 }
