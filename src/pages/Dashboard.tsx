@@ -13,7 +13,6 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useJobFilters } from '../hooks/useJobFilters';
 import { useGatedJobDetail } from '../hooks/useGatedJobDetail';
 import { useDeepLinkJob } from '../hooks/useDeepLinkJob';
-import SkillMatches from '../components/SkillMatches';
 
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
@@ -236,7 +235,6 @@ export default function Dashboard() {
       <div ref={heroRef} style={{ display: 'none' }} />
 
       <Container style={{ padding: '10px 24px 0', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <SkillMatches />
         <div ref={filtersRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 10, flexShrink: 0 }}>
           <DashboardFilterBar
             filters={filters} setFilters={setFilters}

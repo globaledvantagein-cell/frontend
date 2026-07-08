@@ -7,11 +7,13 @@ export const ADMIN_LINKS: ReadonlyArray<readonly [string, string]> = [
   ['/rejected',         'Trash'],
   ['/feedback',         'Feedback'],
   ['/smart-match',      'Smart Match'],
+  ['/today-matches',    "Today's Matches"],
 ];
 
 export const PUBLIC_LINKS: ReadonlyArray<readonly [string, string]> = [
   ['/directory', 'Companies'],
   ['/jobs',      'Browse Jobs'],
   ['/smart-match', 'Smart Match'],
+  ['/today-matches', "Today's Matches"],
   ['/applied',   'Applied'],
 ];

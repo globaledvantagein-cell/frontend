@@ -29,6 +29,7 @@ const JobTestLogs     = lazy(() => import('./pages/JobTestLogs'));
 const AdminFeedback   = lazy(() => import('./pages/AdminFeedback'));
 const ResumeMatcher   = lazy(() => import('./pages/SmartMatch'));
 const ResumeUploadPage = lazy(() => import('./pages/ResumeUploadPage'));
+const TodayMatches    = lazy(() => import('./pages/TodayMatches'));
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const PROFILE_ENABLED  = import.meta.env.VITE_ENABLE_PROFILE === 'true';
@@ -72,6 +73,7 @@ export default function App() {
                 {PROFILE_ENABLED && (
                   <Route element={<ProtectedRoute />}>
                     <Route path="profile" element={<Profile />} />
+                    <Route path="today-matches" element={<TodayMatches />} />
                   </Route>
                 )}
 
