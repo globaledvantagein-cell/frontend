@@ -45,12 +45,22 @@ export default function SmartMatch() {
   useEffect(() => { document.title = `Smart Match · ${BRAND.appName}`; }, []);
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  // Check if user has a stored profile
+  // Check if user has a stored profile + load cached results
   useEffect(() => {
     if (authLoading || !token) return;
     apiGet<{ parsedProfile?: unknown }>('/api/auth/me')
       .then(data => setHasProfile(!!data?.parsedProfile))
       .catch(() => setHasProfile(false));
+
+    // Try loading cached Smart Match results
+    apiGet<{ success: boolean; results?: MatchResponse['results']; meta?: MatchResponse['meta']; cached?: boolean }>('/api/jobs/admin/resume-match')
+      .then(data => {
+        if (data?.success && data.results && data.results.length > 0) {
+          setResult({ results: data.results, meta: data.meta } as MatchResponse);
+          setStatus('done');
+        }
+      })
+      .catch(() => { /* no cache, that's fine */ });
   }, [token, authLoading]);
 
   const runMatch = async (payload?: { text: string }) => {

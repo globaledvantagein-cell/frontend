@@ -27,6 +27,7 @@ export interface SkillMatchResponse {
   };
 }
 
-export async function fetchSkillMatches(): Promise<SkillMatchResponse> {
-  return apiGet<SkillMatchResponse>('/api/jobs/skill-matches');
+export async function fetchSkillMatches(refresh = false): Promise<SkillMatchResponse> {
+  const qs = refresh ? '?refresh=1' : '';
+  return apiGet<SkillMatchResponse>(`/api/jobs/skill-matches${qs}`);
 }

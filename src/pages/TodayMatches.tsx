@@ -30,9 +30,9 @@ export default function TodayMatches() {
 
   useEffect(() => { document.title = `Today's Matches · ${BRAND.appName}`; }, []);
 
-  const load = () => {
+  const load = (refresh = false) => {
     setStatus('loading');
-    fetchSkillMatches()
+    fetchSkillMatches(refresh)
       .then(data => {
         setMatches(data.matches);
         setMeta(data.meta);
@@ -121,7 +121,7 @@ export default function TodayMatches() {
                 {matches.length} match{matches.length !== 1 ? 'es' : ''} from{' '}
                 {meta.totalJobsScanned?.toLocaleString()} jobs · {meta.userSkillCount} skills in your profile
               </span>
-              <Button variant="ghost" size="sm" onClick={load}>
+              <Button variant="ghost" size="sm" onClick={() => load(true)}>
                 <RefreshCw size={12} /> Refresh
               </Button>
             </div>
