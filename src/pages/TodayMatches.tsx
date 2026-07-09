@@ -37,9 +37,11 @@ export default function TodayMatches() {
         setMatches(data.matches);
         setMeta(data.meta);
         setStatus(
-          data.meta.reason === 'no_profile' ? 'no_profile' :
-          data.meta.reason === 'no_skills'  ? 'no_skills'  :
-          data.matches.length === 0         ? 'no_matches'  :
+          data.meta.reason === 'no_profile'     ? 'no_profile' :
+          data.meta.reason === 'no_skills'      ? 'no_skills'  :
+          data.meta.reason === 'too_few_skills' ? 'no_skills'  :
+          data.meta.reason === 'cache_not_ready' ? 'error'     :
+          data.matches.length === 0             ? 'no_matches' :
           'done'
         );
       })
@@ -90,7 +92,7 @@ export default function TodayMatches() {
           <PromptCard
             icon={<Wrench size={32} style={{ color: 'var(--text-muted)' }} />}
             title="Add skills to your profile"
-            body="Your profile doesn't have any skills yet. Add your skills so we can find jobs that match."
+            body="Your profile doesn't have enough skills yet. Add at least 3 skills so we can find meaningful matches."
             linkTo="/profile"
             linkLabel="Edit Skills"
           />

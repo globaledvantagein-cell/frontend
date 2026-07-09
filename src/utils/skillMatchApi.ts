@@ -21,7 +21,7 @@ export interface SkillMatchJob {
 export interface SkillMatchResponse {
   matches: SkillMatchJob[];
   meta: {
-    reason: 'ok' | 'no_profile' | 'no_skills' | 'no_matches';
+    reason: 'ok' | 'no_profile' | 'no_skills' | 'too_few_skills' | 'no_matches' | 'cache_not_ready';
     totalJobsScanned?: number;
     userSkillCount?: number;
   };
