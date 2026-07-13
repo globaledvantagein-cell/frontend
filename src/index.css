@@ -362,6 +362,14 @@ body::before {
   flex-direction: column;
   gap: 4px;
 }
+.job-description-html > :first-child {
+  margin-top: 0 !important;
+}
+/* Hide empty paragraphs and nbsp-only paragraphs */
+.job-description-html p:empty,
+.job-description-html p:has(> br:only-child) {
+  display: none;
+}
 .job-description-html p {
   color: var(--text-secondary);
   font-size: 0.9rem;
