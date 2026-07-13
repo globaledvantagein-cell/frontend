@@ -3,10 +3,9 @@
  * Shows summary, skills with categories, work experience with responsibilities
  * and tech tags, education, and projects — similar to JobMesh's profile view.
  */
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { FileText, Upload, Briefcase, GraduationCap, FolderOpen, Wrench, Pencil, X, Plus, Check } from 'lucide-react';
-import { Card, Badge, Button } from '../ui';
+import { Card, Badge, Button, Alert } from '../ui';
 import { apiGet, apiPatch } from '../../utils/jobApi';
 
 interface ParsedProfile {
@@ -44,8 +43,8 @@ export default function ParsedResumeProfile() {
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
           <FileText size={28} style={{ color: 'var(--text-muted)', marginBottom: 8 }} />
           <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>No resume uploaded yet</p>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 14 }}>Upload your resume to see your parsed profile and use Smart Match.</p>
-          <Link to="/resume"><Button size="sm"><Upload size={14} /> Upload Resume</Button></Link>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 14 }}>Upload your resume to build your profile and enable job matching.</p>
+          <ResumeUploader onParsed={(p) => setProfile(p)} />
         </div>
       </Card>
     );
@@ -66,7 +65,7 @@ export default function ParsedResumeProfile() {
             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Parsed Resume</h3>
             {profile.name && <p style={{ margin: '2px 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>{profile.name}</p>}
           </div>
-          <Link to="/resume"><Button variant="ghost" size="sm"><Upload size={12} /> Re-upload</Button></Link>
+          <ResumeUploader compact onParsed={(p) => setProfile(p)} />
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
           {profile.seniority_level && <Badge variant="primary">{profile.seniority_level}</Badge>}
@@ -303,5 +302,127 @@ function SkillsCard({ skills, onSkillsUpdated }: { skills: Skill[]; onSkillsUpda
         </>
       )}
     </Card>
+  );
+}
+// ── Inline Resume Uploader ─────────────────────────────────────────────────────
+// Handles upload, dedup detection (silent toast for same resume), and profile update.
+function ResumeUploader({ compact, onParsed }: { compact?: boolean; onParsed: (p: any) => void }) {
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'reused'>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const upload = useCallback(async (file: File) => {
+    if (file.type !== 'application/pdf') {
+      setError('Please upload a PDF file.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File too large. Max 10 MB.');
+      return;
+    }
+
+    setStatus('uploading');
+    setError(null);
+
+    const token = localStorage.getItem('ejg_token');
+    if (!token) { setError('Not signed in.'); setStatus('idle'); return; }
+
+    const formData = new FormData();
+    formData.append('resume', file);
+
+    try {
+      const res = await fetch('/api/auth/upload-resume', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+      if (data.reused) {
+        setStatus('reused');
+        setTimeout(() => setStatus('idle'), 3000);
+      } else {
+        onParsed(data.profile);
+        setStatus('idle');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+      setStatus('idle');
+    }
+  }, [onParsed]);
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) upload(file);
+    e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) upload(file);
+  };
+
+  // Compact mode: just a button (used in header next to "Parsed Resume")
+  if (compact) {
+    return (
+      <div>
+        <input ref={inputRef} type="file" accept=".pdf" onChange={handleFile} style={{ display: 'none' }} />
+        <Button
+          variant="ghost" size="sm"
+          onClick={() => inputRef.current?.click()}
+          disabled={status === 'uploading'}
+        >
+          <Upload size={12} /> {status === 'uploading' ? 'Parsing…' : 'Re-upload'}
+        </Button>
+        {status === 'reused' && (
+          <p style={{ fontSize: '0.74rem', color: 'var(--success)', marginTop: 4 }}>
+            Resume unchanged — profile already up to date.
+          </p>
+        )}
+        {error && <p style={{ fontSize: '0.74rem', color: 'var(--error)', marginTop: 4 }}>{error}</p>}
+      </div>
+    );
+  }
+
+  // Full mode: drag-drop zone (used when no profile exists)
+  return (
+    <div>
+      <input ref={inputRef} type="file" accept=".pdf" onChange={handleFile} style={{ display: 'none' }} />
+      {status === 'reused' ? (
+        <Alert type="info">Resume unchanged — profile already up to date.</Alert>
+      ) : (
+        <div
+          onClick={() => status !== 'uploading' && inputRef.current?.click()}
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          style={{
+            border: `2px dashed ${dragOver ? 'var(--primary)' : 'var(--border)'}`,
+            borderRadius: 10, padding: '28px 16px', textAlign: 'center',
+            cursor: status === 'uploading' ? 'wait' : 'pointer',
+            background: dragOver ? 'var(--bg-surface-2)' : 'transparent',
+            transition: 'all 0.2s',
+            opacity: status === 'uploading' ? 0.6 : 1,
+          }}
+        >
+          {status === 'uploading' ? (
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Parsing your resume… this takes a few seconds</p>
+          ) : (
+            <>
+              <Upload size={24} style={{ color: 'var(--text-muted)', marginBottom: 8 }} />
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem', marginBottom: 2 }}>
+                Drop your resume here, or click to browse
+              </p>
+              <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>PDF · up to 10 MB</p>
+            </>
+          )}
+        </div>
+      )}
+      {error && <p style={{ fontSize: '0.78rem', color: 'var(--error)', marginTop: 8 }}>{error}</p>}
+    </div>
   );
 }

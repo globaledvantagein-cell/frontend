@@ -82,9 +82,9 @@ export default function TodayMatches() {
           <PromptCard
             icon={<Upload size={32} style={{ color: 'var(--text-muted)' }} />}
             title="Upload your resume first"
-            body="We need your resume to extract skills and find matching jobs. Upload once — it's saved to your profile."
-            linkTo="/resume"
-            linkLabel="Upload Resume"
+            body="Upload your resume on your Profile page to build your profile and enable job matching."
+            linkTo="/profile"
+            linkLabel="Go to Profile"
           />
         )}
 

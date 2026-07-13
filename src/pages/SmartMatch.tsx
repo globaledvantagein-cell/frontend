@@ -38,8 +38,6 @@ export default function SmartMatch() {
   const [status, setStatus] = useState<Status>('idle');
   const [result, setResult] = useState<MatchResponse | null>(null);
   const [error, setError] = useState<{ message: string } | null>(null);
-  const [pasteMode, setPasteMode] = useState(false);
-  const [pasteText, setPasteText] = useState('');
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => { document.title = `Smart Match · ${BRAND.appName}`; }, []);
@@ -53,10 +51,10 @@ export default function SmartMatch() {
       .catch(() => setHasProfile(false));
 
     // Try loading cached Smart Match results
-    apiGet<{ success: boolean; results?: MatchResponse['results']; meta?: MatchResponse['meta']; cached?: boolean }>('/api/jobs/admin/resume-match')
+    apiGet<{ success: boolean; results?: MatchResponse['results']; meta?: MatchResponse['meta']; profile?: MatchResponse['profile']; cached?: boolean }>('/api/jobs/admin/resume-match')
       .then(data => {
-        if (data?.success && data.results && data.results.length > 0) {
-          setResult({ results: data.results, meta: data.meta } as MatchResponse);
+        if (data?.success && data.results && data.results.length > 0 && data.profile) {
+          setResult({ results: data.results, meta: data.meta, profile: data.profile } as MatchResponse);
           setStatus('done');
         }
       })
@@ -93,10 +91,6 @@ export default function SmartMatch() {
   };
 
   const handleRunMatch = () => runMatch();
-  const handlePasteMatch = () => {
-    if (pasteText.trim().length < 50) return;
-    runMatch({ text: pasteText });
-  };
   const handleReset = () => { setStatus('idle'); setResult(null); setError(null); };
 
   if (authLoading || hasProfile === null) {
@@ -130,7 +124,7 @@ export default function SmartMatch() {
 
         {status === 'done' && result && (
           <>
-            <ParsedProfileCard profile={result.profile} />
+            {result.profile && <ParsedProfileCard profile={result.profile} />}
             <div style={{ marginTop: 16 }}>
               <MatchResults data={result} />
             </div>
@@ -161,8 +155,8 @@ export default function SmartMatch() {
                 </Button>
                 <p style={{ marginTop: 12, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   Resume changed?{' '}
-                  <Link to="/resume" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>
-                    Re-upload
+                  <Link to="/profile" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>
+                    Update on Profile
                   </Link>
                 </p>
               </div>
@@ -173,35 +167,12 @@ export default function SmartMatch() {
               }}>
                 <Upload size={32} style={{ color: 'var(--text-muted)', marginBottom: 12 }} />
                 <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-                  Upload your resume first
+                  Complete your profile first
                 </h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: 20, maxWidth: 400, margin: '0 auto 20px' }}>
-                  We need your resume to find matching jobs. Upload once — it's saved to your profile.
+                  Upload your resume on your Profile page to build your profile and enable matching.
                 </p>
-                <Link to="/resume"><Button><Upload size={16} /> Upload Resume</Button></Link>
-                <p style={{ marginTop: 16, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  or{' '}
-                  <button onClick={() => setPasteMode(true)} style={{ color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>
-                    paste your resume text
-                  </button>
-                </p>
-              </div>
-            )}
-
-            {pasteMode && !hasProfile && (
-              <div style={{ marginTop: 16 }}>
-                <textarea
-                  value={pasteText} onChange={e => setPasteText(e.target.value)}
-                  placeholder="Paste the full text of your resume here..."
-                  style={{
-                    width: '100%', minHeight: 160, padding: 14, borderRadius: 10,
-                    border: '1px solid var(--border)', background: 'var(--bg-surface)',
-                    color: 'var(--text-primary)', fontSize: '0.88rem', resize: 'vertical',
-                  }}
-                />
-                <Button size="sm" onClick={handlePasteMatch} style={{ marginTop: 8 }}>
-                  <Sparkles size={14} /> Match from text
-                </Button>
+                <Link to="/profile"><Button><Upload size={16} /> Go to Profile</Button></Link>
               </div>
             )}
           </>
