@@ -67,7 +67,7 @@ export default function JobPreferencesForm() {
   };
 
   return (
-    <Card>
+    <Card style={{ padding: 16, borderRadius: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
           Job Preferences

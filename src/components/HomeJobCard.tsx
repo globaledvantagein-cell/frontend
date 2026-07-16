@@ -86,7 +86,7 @@ export default function HomeJobCard({ job }: HomeJobCardProps) {
         gap: 12,
         cursor: 'pointer',
         transition: 'border-color 0.22s, transform 0.22s, box-shadow 0.22s',
-        transform: hovered ? 'translateY(-2px)' : 'none',
+        transform: hovered ? 'translateY(-1px)' : 'none',
         boxShadow: hovered ? '0 8px 24px rgba(0, 0, 0, 0.08)' : 'none',
       }}
     >

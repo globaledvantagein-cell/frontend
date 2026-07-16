@@ -191,7 +191,7 @@ export default function Home() {
           <div className="company-ticker-track">
             {[...companies, ...companies].map((c, i) => (
               <div key={`${c.companyName}-${i}`} style={{ width: 260, flexShrink: 0 }}>
-                <CompanyCard company={c} />
+                <CompanyCard company={c} hideLocation />
               </div>
             ))}
           </div>

@@ -9,7 +9,11 @@ const BTN_BASE: CSSProperties = {
   fontFamily: 'inherit', fontWeight: 600, letterSpacing: '0.01em',
   border: 'none', borderRadius: '10px',
   cursor: 'pointer', textDecoration: 'none', lineHeight: 1,
-  transition: 'all 0.22s cubic-bezier(0.2,0.8,0.2,1)',
+  // Explicit properties only — never `all` (it animates layout props off-GPU).
+  // Colour/shadow ease over 0.18s; the press-scale (from :active in index.css)
+  // snaps back over 0.14s on a strong ease-out so the button feels responsive.
+  transition:
+    'background-color 0.18s cubic-bezier(0.2,0.8,0.2,1), border-color 0.18s cubic-bezier(0.2,0.8,0.2,1), color 0.18s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.18s cubic-bezier(0.2,0.8,0.2,1), transform 0.14s cubic-bezier(0.23,1,0.32,1)',
   whiteSpace: 'nowrap',
 };
 const BTN_SIZE: Record<Size, CSSProperties> = {

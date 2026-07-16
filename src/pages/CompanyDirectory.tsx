@@ -31,6 +31,37 @@ function getAvatarColor(name: string) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
+// Raw ATS locations arrive messy: "Munich Hybrid (navvis Gmbh)", "Munich Onsite
+// (navvis Gmbh)". Strip the parenthetical, drop trailing workplace-type words,
+// take the leading city, then dedupe case-insensitively. Returns up to `max`
+// unique cities plus how many were hidden.
+const WORKPLACE_WORDS_RE = /\b(hybrid|remote|on-?site|office|flexible)\b/gi;
+
+function cleanCities(cities: string[] | undefined, max = 3): { shown: string[]; extra: number } {
+  if (!cities || cities.length === 0) return { shown: [], extra: 0 };
+
+  const seen = new Set<string>();
+  const unique: string[] = [];
+
+  for (const raw of cities) {
+    const cleaned = String(raw)
+      .replace(/\([^)]*\)/g, '')       // drop "(navvis Gmbh)"
+      .replace(WORKPLACE_WORDS_RE, '') // drop "Hybrid"/"Onsite"/…
+      .split(',')[0]                   // keep the leading city token
+      .replace(/[;·|]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(cleaned);
+  }
+
+  return { shown: unique.slice(0, max), extra: Math.max(0, unique.length - max) };
+}
+
 const CompanyCard = memo(function CompanyCard({
   company, isAdmin, onEdit,
 }: { company: Company; isAdmin: boolean; onEdit: (c: Company) => void }) {
@@ -68,7 +99,7 @@ const CompanyCard = memo(function CompanyCard({
       onMouseEnter={e => {
         e.currentTarget.style.borderColor = 'var(--primary)';
         e.currentTarget.style.boxShadow = '0 6px 20px 0 rgba(0,0,0,0.06)';
-        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.transform = 'translateY(-1px)';
       }}
       onMouseLeave={e => {
         e.currentTarget.style.borderColor = 'var(--border)';
@@ -126,12 +157,16 @@ const CompanyCard = memo(function CompanyCard({
         </a>
       )}
 
-      {company.cities && company.cities.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 10 }}>
-          <MapPin size={12} style={{ marginRight: 2 }} />
-          {company.cities.join(', ')}
-        </div>
-      )}
+      {(() => {
+        const { shown, extra } = cleanCities(company.cities);
+        if (shown.length === 0) return null;
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 10 }}>
+            <MapPin size={12} style={{ marginRight: 2, flexShrink: 0 }} />
+            {shown.join(', ')}{extra > 0 ? ` +${extra} more` : ''}
+          </div>
+        );
+      })()}
       <div style={{ fontSize: '0.78rem', fontWeight: isScraped ? 600 : 500, color: isScraped ? 'var(--primary)' : 'var(--text-muted)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
         {isScraped
           ? <>{companiesPage.scrapedLabel(company.openRoles)}<span style={{ fontSize: 14, marginLeft: 2 }}>→</span></>

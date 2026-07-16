@@ -13,7 +13,7 @@ export function Card({ children, style, onClick, hoverable, className = '' }: { 
         cursor: onClick ? 'pointer' : undefined,
         ...style,
       }}
-      onMouseEnter={hoverable ? e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--ink-border-strong, var(--border-strong))'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-md)'; } : undefined}
+      onMouseEnter={hoverable ? e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--ink-border-strong, var(--border-strong))'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-md)'; } : undefined}
       onMouseLeave={hoverable ? e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--ink-border, var(--border))'; (e.currentTarget as HTMLDivElement).style.transform = 'none'; (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--highlight-edge, none)'; } : undefined}
     >
       {children}

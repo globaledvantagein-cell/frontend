@@ -48,7 +48,7 @@ export function Toast({ message, type = 'success', duration = 6000, onDismiss }:
         left: '50%',
         transform: `translateX(-50%) translateY(${visible && !exiting ? '0' : '-20px'})`,
         opacity: visible && !exiting ? 1 : 0,
-        transition: 'all 0.3s ease',
+        transition: 'transform 0.3s ease, opacity 0.3s ease',
         zIndex: 9999,
         maxWidth: 'min(480px, calc(100vw - 32px))',
         width: '100%',

@@ -151,7 +151,7 @@ export default function AdminCompanies() {
                   company={c}
                   adminActions={
                     <button onClick={(e) => { e.stopPropagation(); deleteCompany(c); }} aria-label={`Delete ${c.companyName}`}
-                      style={{ background: 'none', border: '1.25px solid var(--border)', borderRadius: 7, padding: 6, cursor: 'pointer', color: 'var(--subtle-ink)', display: 'flex', alignItems: 'center', flexShrink: 0, transition: 'all 0.22s' }}
+                      style={{ background: 'none', border: '1.25px solid var(--border)', borderRadius: 7, padding: 6, cursor: 'pointer', color: 'var(--subtle-ink)', display: 'flex', alignItems: 'center', flexShrink: 0, transition: 'background-color 0.22s, border-color 0.22s, color 0.22s' }}
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--danger)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--danger)'; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--subtle-ink)'; }}>
                       <Trash2 size={13} />

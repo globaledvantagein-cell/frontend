@@ -1,9 +1,9 @@
 /**
- * /smart-match — AI-ranked job recommendations.
+ * /smart-match — AI-ranked job recommendations. Admin-only while in testing.
  *
- * If user has a stored parsedProfile (from /resume upload), shows a
- * one-click "Find my matches" button. Otherwise prompts to upload first.
- * Falls back to text paste for users without a PDF.
+ * If the user has a stored parsedProfile, shows a one-click "Find my matches"
+ * button. Otherwise it links to the Profile page to complete the profile —
+ * resume upload lives ONLY on the Profile page, never here.
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';

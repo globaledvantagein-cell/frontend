@@ -7,9 +7,11 @@ interface Props {
   company: ICompany;
   /** If true, show admin overlay actions */
   adminActions?: ReactNode;
+  /** Homepage carousel hides location so cards stay uniform height. */
+  hideLocation?: boolean;
 }
 
-export default function CompanyCard({ company, adminActions }: Props) {
+export default function CompanyCard({ company, adminActions, hideLocation }: Props) {
   const [imgErr, setImgErr] = useState(false);
   const [hov, setHov] = useState(false);
 
@@ -36,8 +38,8 @@ export default function CompanyCard({ company, adminActions }: Props) {
         display: 'flex',
         flexDirection: 'column',
         gap: 12,
-        transition: 'all 0.22s cubic-bezier(0.2,0.8,0.2,1)',
-        transform: hov && !adminActions ? 'translateY(-3px)' : 'none',
+        transition: 'transform 0.22s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.22s cubic-bezier(0.2,0.8,0.2,1), background-color 0.22s cubic-bezier(0.2,0.8,0.2,1), border-color 0.22s cubic-bezier(0.2,0.8,0.2,1)',
+        transform: hov && !adminActions ? 'translateY(-1px)' : 'none',
         boxShadow: hov ? 'var(--shadow-md)' : 'none',
         minHeight: 140,
         position: 'relative',
@@ -63,7 +65,7 @@ export default function CompanyCard({ company, adminActions }: Props) {
         }}>
           {!imgErr
             ? <img src={`https://logo.clearbit.com/${host(company.domain)}?size=128`} alt={company.companyName}
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', filter: hov ? 'none' : 'grayscale(40%) brightness(0.9)', opacity: hov ? 1 : 0.75, transition: 'all 0.3s' }}
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', filter: hov ? 'none' : 'grayscale(40%) brightness(0.9)', opacity: hov ? 1 : 0.75, transition: 'filter 0.3s ease, opacity 0.3s ease' }}
               onError={() => setImgErr(true)} />
             : <span className="font-sketch" style={{ fontSize: '1.3rem', color: 'var(--primary)', fontWeight: 700 }}>{company.companyName.charAt(0)}</span>}
         </div>
@@ -75,11 +77,13 @@ export default function CompanyCard({ company, adminActions }: Props) {
         </div>
       </div>
 
-      {/* Location */}
-      <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: 'var(--subtle-ink)', lineHeight: 1.5, marginTop: 'auto' }}>
-        <MapPin size={12} style={{ flexShrink: 0 }} />
-        {company.cities.length > 0 ? company.cities.slice(0, 3).join(', ') : 'Germany (Various)'}
-      </p>
+      {/* Location — hidden on the homepage carousel (uneven heights). Kept on /directory. */}
+      {!hideLocation && (
+        <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: 'var(--subtle-ink)', lineHeight: 1.5, marginTop: 'auto' }}>
+          <MapPin size={12} style={{ flexShrink: 0 }} />
+          {company.cities.length > 0 ? company.cities.slice(0, 3).join(', ') : 'Germany (Various)'}
+        </p>
+      )}
 
       {/* Source badge for admin */}
       {adminActions && (

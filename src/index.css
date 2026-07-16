@@ -502,7 +502,7 @@ body::before {
 
 .job-card:hover {
   border-color: var(--primary) !important;
-  transform: translateX(3px);
+  /* No positional shift on hover — border + shadow convey the state. */
   box-shadow: var(--shadow-md);
 }
 
@@ -514,7 +514,7 @@ body::before {
 
 @media (hover: hover) {
   .why-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-1px);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.06);
   }
 }
@@ -613,15 +613,16 @@ body::before {
   border-radius: 6px;
   opacity: 0;
   z-index: -1;
-  transform: scaleX(0.92) rotate(-0.3deg);
+  /* Opacity-only fade — no scaleX grow. A marker that swept from 92%→100%
+     width read as the button "growing" on hover. Now it just fades in. */
+  transform: scaleX(1) rotate(-0.3deg);
   transform-origin: left center;
-  transition: opacity 0.25s, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.25s ease;
   mix-blend-mode: var(--marker-blend, multiply);
 }
 
 .marker-hover:hover::before {
   opacity: var(--marker-opacity, 0.55);
-  transform: scaleX(1) rotate(-0.3deg);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1233,10 +1234,21 @@ body::before {
 }
 
 /* ── Active press feedback ──────────────────────────── */
+/* Touch: instant dim + shrink (no transition needed on tap). */
 @media (hover: none) {
   button:active,
   [role="button"]:active {
     opacity: 0.75;
+    transform: scale(0.97);
+  }
+}
+
+/* Pointer devices had NO press feedback before — every pressable element
+   should confirm the press. scale(0.97) is subtle; the transition back up
+   comes from each button's own `transform` transition. */
+@media (hover: hover) and (pointer: fine) {
+  button:active,
+  [role="button"]:active {
     transform: scale(0.97);
   }
 }

@@ -38,14 +38,18 @@ export default function ParsedResumeProfile() {
   if (loading) return <div className="skeleton" style={{ height: 120, borderRadius: 12, marginBottom: 14 }} />;
 
   if (!profile) {
+    // Compact, inviting empty state — the drop zone itself is the call to
+    // action, so we don't repeat an icon + long blurb above it.
     return (
       <Card>
-        <div style={{ textAlign: 'center', padding: '20px 0' }}>
-          <FileText size={28} style={{ color: 'var(--text-muted)', marginBottom: 8 }} />
-          <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>No resume uploaded yet</p>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 14 }}>Upload your resume to build your profile and enable job matching.</p>
-          <ResumeUploader onParsed={(p) => setProfile(p)} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <FileText size={15} style={{ color: 'var(--text-muted)' }} />
+          <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>Your resume</h4>
         </div>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>
+          Upload a PDF to build your profile and unlock job matching.
+        </p>
+        <ResumeUploader onParsed={(p) => setProfile(p)} />
       </Card>
     );
   }
@@ -405,7 +409,8 @@ function ResumeUploader({ compact, onParsed }: { compact?: boolean; onParsed: (p
             borderRadius: 10, padding: '28px 16px', textAlign: 'center',
             cursor: status === 'uploading' ? 'wait' : 'pointer',
             background: dragOver ? 'var(--bg-surface-2)' : 'transparent',
-            transition: 'all 0.2s',
+            // Specific properties only — never `all`. Strong ease-out, sub-300ms.
+            transition: 'border-color 180ms cubic-bezier(0.23,1,0.32,1), background-color 180ms cubic-bezier(0.23,1,0.32,1)',
             opacity: status === 'uploading' ? 0.6 : 1,
           }}
         >

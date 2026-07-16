@@ -24,12 +24,11 @@ export default function IdentityCard({ data, isAdmin }: Props) {
       style={{
         background: 'var(--bg-surface)',
         border: '1px solid var(--border)',
-        borderRadius: 14,
-        padding: 24,
-        marginBottom: 18,
+        borderRadius: 12,
+        padding: 16,
         display: 'flex',
         alignItems: 'center',
-        gap: 18,
+        gap: 16,
       }}
     >
       {data.avatarUrl ? (

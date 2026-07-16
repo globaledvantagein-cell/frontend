@@ -26,7 +26,7 @@ const btnBase: React.CSSProperties = {
     minWidth: 36, height: 36, borderRadius: 10,
     border: '1.25px solid var(--border)', background: 'var(--surface-solid)',
     color: 'var(--ink)', fontSize: '0.875rem', fontWeight: 600,
-    cursor: 'pointer', transition: 'all 0.22s cubic-bezier(0.2,0.8,0.2,1)',
+    cursor: 'pointer', transition: 'background-color 0.22s cubic-bezier(0.2,0.8,0.2,1), border-color 0.22s cubic-bezier(0.2,0.8,0.2,1), color 0.22s cubic-bezier(0.2,0.8,0.2,1)',
     fontFamily: 'inherit', padding: '0 8px',
 };
 const btnActive: React.CSSProperties = {

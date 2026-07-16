@@ -44,7 +44,7 @@ export default function ApplyConfirmToast({ jobTitle, company, onConfirm, onDism
       position: 'fixed', bottom: 20, left: '50%',
       transform: `translateX(-50%) translateY(${visible && !exiting ? '0' : '20px'})`,
       opacity: visible && !exiting ? 1 : 0,
-      transition: 'all 0.3s ease', zIndex: 9998,
+      transition: 'transform 0.3s ease, opacity 0.3s ease', zIndex: 9998,
       maxWidth: 'min(440px, calc(100vw - 32px))', width: '100%',
       pointerEvents: visible ? 'auto' : 'none',
     }}>
