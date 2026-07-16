@@ -12,6 +12,7 @@ export interface IJob {
   GermanRequired?: boolean;
   Department: string;
   WorkplaceType: string;
+  Category?: string;
   Domain: string;
   SubDomain: string;
   ExperienceLevel: string;

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState, memo } from 'react';
+import { useCallback, useEffect, useMemo, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, MapPin, Search } from 'lucide-react';
+import { ExternalLink, MapPin, Search, Pencil, Globe } from 'lucide-react';
 import { companiesPage } from '../theme/companies-content';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { apiGet } from '../utils/jobApi';
+import { apiGet, apiPatch } from '../utils/jobApi';
+import { useAuth } from '../context/AuthContext';
 
 const AVATAR_COLORS = [
   '#4A90D9', '#50B88E', '#E8915A', '#9B6FD1',
@@ -18,6 +19,10 @@ interface Company {
   cities?: string[];
   careersUrl?: string;
   domain?: string;
+  /** Admin-authored, from the companyProfiles collection. */
+  description?: string | null;
+  website?: string | null;
+  logo?: string | null;
 }
 
 function getAvatarColor(name: string) {
@@ -26,7 +31,9 @@ function getAvatarColor(name: string) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-const CompanyCard = memo(function CompanyCard({ company }: { company: Company }) {
+const CompanyCard = memo(function CompanyCard({
+  company, isAdmin, onEdit,
+}: { company: Company; isAdmin: boolean; onEdit: (c: Company) => void }) {
   const navigate = useNavigate();
   const isScraped = company.source === 'scraped';
 
@@ -75,8 +82,50 @@ const CompanyCard = memo(function CompanyCard({ company }: { company: Company })
           width: 36, height: 36, borderRadius: 8, background: getAvatarColor(company.companyName || ''),
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem', color: '#fff', userSelect: 'none',
         }}>{(company.companyName || '').charAt(0).toUpperCase()}</div>
-        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{company.companyName}</div>
+        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{company.companyName}</div>
+        {isAdmin && (
+          <button
+            type="button"
+            aria-label={`Edit ${company.companyName} description`}
+            title="Edit description"
+            onClick={e => { e.stopPropagation(); onEdit(company); }}
+            style={{
+              background: 'none', border: 'none', padding: 4, cursor: 'pointer',
+              color: 'var(--text-muted)', display: 'inline-flex', borderRadius: 6,
+              transition: 'color 160ms cubic-bezier(0.23, 1, 0.32, 1)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--primary)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+          >
+            <Pencil size={13} />
+          </button>
+        )}
       </div>
+
+      {company.description && (
+        <p style={{
+          fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.55,
+          marginTop: 8, marginBottom: 0,
+        }}>
+          {company.description}
+        </p>
+      )}
+
+      {company.website && (
+        <a
+          href={company.website}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          style={{
+            fontSize: '0.76rem', color: 'var(--primary)', textDecoration: 'none',
+            display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8,
+          }}
+        >
+          <Globe size={11} /> Website
+        </a>
+      )}
+
       {company.cities && company.cities.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 10 }}>
           <MapPin size={12} style={{ marginRight: 2 }} />
@@ -105,11 +154,172 @@ function SkeletonCard() {
   );
 }
 
+// ── Admin: edit a company description ────────────────────────────────────────
+// Modal, not a separate page — the admin is already looking at the directory,
+// so editing in place beats a context switch.
+//
+// Motion: modals are NOT anchored to a trigger, so transform-origin stays
+// centred (unlike a popover). Enters from scale(0.97) + opacity, never
+// scale(0). 180ms on a strong ease-out — under the 300ms UI ceiling.
+const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
+
+function EditCompanyModal({
+  company, onClose, onSaved,
+}: { company: Company; onClose: () => void; onSaved: (c: Company) => void }) {
+  const [description, setDescription] = useState(company.description || '');
+  const [website, setWebsite] = useState(company.website || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [shown, setShown] = useState(false);
+
+  // Next frame, so the browser has a start value to transition FROM.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await apiPatch<{ profile: { description?: string; website?: string | null; logo?: string | null } }>(
+        `/api/admin/company-profiles/${encodeURIComponent(company.companyName)}`,
+        { description, website },
+      );
+      onSaved({
+        ...company,
+        description: res.profile?.description || null,
+        website: res.profile?.website || null,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save.');
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 100,
+        background: 'rgba(0,0,0,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+        opacity: shown ? 1 : 0,
+        transition: `opacity 180ms ${EASE_OUT}`,
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Edit ${company.companyName}`}
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--bg-surface)', border: '1px solid var(--border)',
+          borderRadius: 12, padding: 20, width: '100%', maxWidth: 460,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+          opacity: shown ? 1 : 0,
+          transform: shown ? 'scale(1)' : 'scale(0.97)',
+          transition: `opacity 180ms ${EASE_OUT}, transform 180ms ${EASE_OUT}`,
+        }}
+      >
+        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
+          {company.companyName}
+        </h2>
+        <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: 14 }}>
+          Shown on the public directory card.
+        </p>
+
+        <label htmlFor="cp-desc" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+          Description
+        </label>
+        <textarea
+          id="cp-desc"
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          rows={4}
+          placeholder="What does this company do?"
+          style={{
+            width: '100%', padding: '10px 12px', fontSize: '0.85rem', fontFamily: 'inherit',
+            background: 'var(--bg-surface-2)', color: 'var(--text-primary)',
+            border: '1px solid var(--border)', borderRadius: 8, outline: 'none',
+            resize: 'vertical', marginBottom: 12,
+          }}
+        />
+
+        <label htmlFor="cp-site" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+          Website
+        </label>
+        <input
+          id="cp-site"
+          value={website}
+          onChange={e => setWebsite(e.target.value)}
+          placeholder="https://example.com"
+          style={{
+            width: '100%', height: 38, padding: '0 12px', fontSize: '0.85rem', fontFamily: 'inherit',
+            background: 'var(--bg-surface-2)', color: 'var(--text-primary)',
+            border: '1px solid var(--border)', borderRadius: 8, outline: 'none',
+            marginBottom: 12,
+          }}
+        />
+
+        {error && <p style={{ fontSize: '0.78rem', color: 'var(--error)', marginBottom: 10 }}>{error}</p>}
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button
+            onClick={onClose}
+            disabled={saving}
+            style={{
+              height: 36, padding: '0 14px', borderRadius: 8, cursor: 'pointer',
+              background: 'transparent', border: '1px solid var(--border)',
+              color: 'var(--text-secondary)', fontSize: '0.84rem', fontWeight: 600, fontFamily: 'inherit',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={save}
+            disabled={saving}
+            style={{
+              height: 36, padding: '0 16px', borderRadius: 8,
+              cursor: saving ? 'not-allowed' : 'pointer',
+              background: 'var(--primary)', border: '1px solid var(--primary)',
+              color: '#fff', fontSize: '0.84rem', fontWeight: 600, fontFamily: 'inherit',
+              transition: `transform 120ms ${EASE_OUT}`,
+            }}
+            onPointerDown={e => { if (!saving) e.currentTarget.style.transform = 'scale(0.97)'; }}
+            onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CompanyDirectory() {
+  const { isAdmin } = useAuth();
   const [companies, setCompanies] = useState<Company[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showCount, setShowCount] = useState(30);
+  const [editing, setEditing] = useState<Company | null>(null);
+
+  const handleSaved = useCallback((updated: Company) => {
+    setCompanies(prev => (prev || []).map(c => (c.companyName === updated.companyName ? updated : c)));
+    setEditing(null);
+  }, []);
 
   useEffect(() => {
     document.title = companiesPage.title;
@@ -187,7 +397,9 @@ export default function CompanyDirectory() {
         {loading ? (
           Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)
         ) : visibleCompanies.length > 0 ? (
-          visibleCompanies.map((company, i) => <CompanyCard key={company.companyName + i} company={company} />)
+          visibleCompanies.map((company, i) => (
+            <CompanyCard key={company.companyName + i} company={company} isAdmin={isAdmin} onEdit={setEditing} />
+          ))
         ) : (
           <div style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--text-muted)', fontSize: '1.02rem', margin: '32px 0' }}>No companies match your search</div>
         )}
@@ -212,6 +424,14 @@ export default function CompanyDirectory() {
       <div style={{ color: 'var(--text-muted)', fontSize: '0.76rem', textAlign: 'center', maxWidth: 600, margin: '32px auto 0' }}>
         {companiesPage.disclaimer}
       </div>
+
+      {editing && (
+        <EditCompanyModal
+          company={editing}
+          onClose={() => setEditing(null)}
+          onSaved={handleSaved}
+        />
+      )}
     </div>
   );
 }

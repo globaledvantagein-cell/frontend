@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import HomeJobCard from '../components/HomeJobCard';
@@ -9,8 +9,48 @@ import { BRAND } from '../theme/brand';
 import { CONTENT } from '../theme/content';
 import { useAuth } from '../context/AuthContext';
 import { apiGet } from '../utils/jobApi';
+import { CATEGORY_LABELS, CATEGORY_ORDER } from '../utils/categorize';
 
 const TICKER = CONTENT.home.ticker;
+
+// Internal link paths to the server-rendered SEO landing pages. Only the major
+// cities are listed here — each /city/* page cross-links to every other city,
+// so Google reaches the long tail from any one of them (and from /sitemap.xml)
+// without turning the homepage into a link dump.
+//
+// Slugs MUST match CANONICAL_CITIES in the backend's src/seo/cities.js.
+const SEO_CITIES: ReadonlyArray<readonly [string, string]> = [
+  ['berlin',     'Berlin'],
+  ['munich',     'Munich'],
+  ['hamburg',    'Hamburg'],
+  ['frankfurt',  'Frankfurt'],
+  ['cologne',    'Cologne'],
+  ['stuttgart',  'Stuttgart'],
+  ['dusseldorf', 'Düsseldorf'],
+  ['leipzig',    'Leipzig'],
+  ['dresden',    'Dresden'],
+  ['hanover',    'Hanover'],
+  ['nuremberg',  'Nuremberg'],
+  ['bonn',       'Bonn'],
+];
+
+const SEO_LINK: CSSProperties = {
+  fontSize: '0.84rem',
+  color: 'var(--text-secondary)',
+  textDecoration: 'none',
+  border: '1px solid var(--border)',
+  borderRadius: 999,
+  padding: '5px 12px',
+  background: 'var(--bg-surface)',
+};
+
+// auto-fill + minmax gives 3 columns on desktop and collapses to 2/1 on
+// narrower screens without needing a media query.
+const JOB_GRID: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))',
+  gap: 12,
+};
 
 export default function Home() {
   const { isAuthenticated, token } = useAuth();
@@ -24,10 +64,11 @@ export default function Home() {
     (async () => {
       try {
         const [jd, dd] = await Promise.all([
-          apiGet<{ jobs?: IJob[] }>('/api/jobs?limit=6', { noAuth: true }),
+          // /public-bait returns the 9 newest active jobs, already teaser-safe.
+          apiGet<IJob[]>('/api/jobs/public-bait', { noAuth: true }),
           apiGet<ICompany[]>('/api/jobs/directory', { noAuth: true }),
         ]);
-        setJobs(jd.jobs || []);
+        setJobs(Array.isArray(jd) ? jd : []);
         if (Array.isArray(dd)) setCompanies(dd.slice(0, 8));
       } catch (e) { console.error(e); } finally { setLoading(false); }
     })();
@@ -42,7 +83,7 @@ export default function Home() {
   }, [isAuthenticated, token]);
 
 
-  const previewJobs = jobs.slice(0, 6);
+  const previewJobs = jobs.slice(0, 9);
 
   return (
     <div>
@@ -81,6 +122,36 @@ export default function Home() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* ── LATEST JOBS — 9 newest, straight below the hero ──────────── */}
+      <section style={{ padding: '72px 0', background: 'var(--surface-solid)', borderBottom: '1.25px solid var(--border)' }}>
+        <Container size="lg">
+          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.3rem, 3vw, 1.8rem)', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2, marginBottom: 24 }}>
+            {CONTENT.home.latest.heading}
+          </h2>
+          {loading ? (
+            <div style={JOB_GRID}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => (
+                <div key={i} className="skeleton" style={{ height: 118, borderRadius: 12 }} />
+              ))}
+            </div>
+          ) : (
+            <div className="stagger" style={JOB_GRID}>
+              {previewJobs.map(job => <HomeJobCard key={job._id} job={job} />)}
+            </div>
+          )}
+          <div style={{ marginTop: 28, textAlign: 'center' }}>
+            <Link
+              to="/jobs"
+              style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline'; }}
+              onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none'; }}
+            >
+              Browse all jobs <ArrowRight size={13} />
+            </Link>
+          </div>
+        </Container>
       </section>
 
       {/* ── HOW WE FIND ENGLISH-SPEAKING JOBS — EDITORIAL NUMBERED ROWS ──────────────── */}
@@ -127,32 +198,36 @@ export default function Home() {
         </div>
       </section>
 
-
-      {/* ── LATEST JOBS ──────────────────────────────── */}
-      <section style={{ padding: '80px 0', background: 'var(--surface-solid)', borderTop: '1.25px solid var(--border)' }}>
-        <Container size="lg">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.3rem, 3vw, 1.8rem)', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-              {CONTENT.home.latest.heading}
+      {/* ── SEO INTERNAL LINKS ───────────────────────────────
+          Plain <a>, not <Link> — these point at server-rendered pages that live
+          outside the SPA, so react-router must NOT intercept the click. */}
+      <section style={{ padding: '56px 0 64px', background: 'var(--paper)', borderTop: '1.25px solid var(--border)' }}>
+        <Container>
+          <div style={{ marginBottom: 28 }}>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>
+              Jobs by City
             </h2>
-            <Link
-              to="/jobs"
-              style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-              onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline'; }}
-              onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none'; }}
-            >
-              {CONTENT.home.latest.viewAllCta} <ArrowRight size={13} />
-            </Link>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {SEO_CITIES.map(([slug, label]) => (
+                <a key={slug} href={`/city/${slug}`} style={SEO_LINK}>
+                  English jobs in {label}
+                </a>
+              ))}
+            </div>
           </div>
-          {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 96, borderRadius: 12 }} />)}
+
+          <div>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>
+              Jobs by Category
+            </h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {CATEGORY_ORDER.map(cat => (
+                <a key={cat} href={`/category/${cat}`} style={SEO_LINK}>
+                  {CATEGORY_LABELS[cat]}
+                </a>
+              ))}
             </div>
-          ) : (
-            <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {previewJobs.map(job => <HomeJobCard key={job._id} job={job} />)}
-            </div>
-          )}
+          </div>
         </Container>
       </section>
     </div>

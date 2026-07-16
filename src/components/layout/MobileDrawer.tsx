@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { LogOut, User as UserIcon, X } from 'lucide-react';
 import { Badge, Button } from '../ui';
+import { isSsrPath, USER_MENU_LINKS } from './navLinks';
 
 interface User {
   name: string;
@@ -21,23 +22,26 @@ interface Props {
 function DrawerLink({
   path, label, active, onClick,
 }: { path: string; label: string; active: boolean; onClick: () => void }) {
+  const style: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '13px 20px',
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: active ? 'var(--acid)' : 'var(--text-primary)',
+    textDecoration: 'none',
+    borderLeft: active ? '3px solid var(--acid)' : '3px solid transparent',
+    background: active ? 'var(--acid-soft)' : 'transparent',
+    transition: 'background 0.15s, color 0.15s',
+  };
+
+  // SSR pages live outside the SPA — see isSsrPath().
+  if (isSsrPath(path)) {
+    return <a href={path} onClick={onClick} style={style}>{label}</a>;
+  }
+
   return (
-    <Link
-      to={path}
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '13px 20px',
-        fontSize: '1rem',
-        fontWeight: 600,
-        color: active ? 'var(--acid)' : 'var(--text-primary)',
-        textDecoration: 'none',
-        borderLeft: active ? '3px solid var(--acid)' : '3px solid transparent',
-        background: active ? 'var(--acid-soft)' : 'transparent',
-        transition: 'background 0.15s, color 0.15s',
-      }}
-    >
+    <Link to={path} onClick={onClick} style={style}>
       {label}
     </Link>
   );
@@ -85,6 +89,23 @@ export default function MobileDrawer({
               onClick={onClose}
             />
           ))}
+
+          {/* Profile / Applied live in the user menu on desktop — the drawer
+              has no such menu, so they go here instead of vanishing. */}
+          {isAuthenticated && !isAdmin && (
+            <>
+              <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
+              {USER_MENU_LINKS.map(([path, label]) => (
+                <DrawerLink
+                  key={path}
+                  path={path}
+                  label={label}
+                  active={isActive(path)}
+                  onClick={onClose}
+                />
+              ))}
+            </>
+          )}
         </nav>
 
         <div style={{ borderTop: '1px solid var(--border)', padding: '16px 20px', flexShrink: 0, paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>

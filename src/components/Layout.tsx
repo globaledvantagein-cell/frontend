@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useLocation, useSearchParams } from 'react-router-dom';
-import { LogOut, User as UserIcon, Menu, X, Sun, Moon } from 'lucide-react';
+import { Menu, X, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAppliedJobs } from '../context/AppliedJobsContext';
 import { useTheme } from '../theme/ThemeProvider';
@@ -8,11 +8,12 @@ import Footer from './Footer';
 import FeedbackWidget from './FeedbackWidget';
 import { Toast } from './Toast';
 import ApplyConfirmToast from './ApplyConfirmToast';
-import { Button, Badge } from './ui';
+import { Button } from './ui';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { apiGet } from '../utils/jobApi';
 import DesktopNav from './layout/DesktopNav';
 import MobileDrawer from './layout/MobileDrawer';
+import UserMenu from './layout/UserMenu';
 import { ADMIN_LINKS, PUBLIC_LINKS } from './layout/navLinks';
 
 export default function Layout() {
@@ -160,35 +161,7 @@ export default function Layout() {
             </button>
 
             {!isMobileNav && isAuthenticated && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Link
-                  to="/profile"
-                  className="no-touch-expand"
-                  style={{
-                    fontSize: '0.8rem',
-                    color: 'var(--text-muted)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    textDecoration: 'none',
-                    padding: '6px 10px',
-                    borderRadius: 8,
-                    border: '1px solid transparent',
-                    transition: 'color 0.18s, border-color 0.18s',
-                    fontWeight: 600,
-                  }}
-                >
-                  <UserIcon size={13} /> {user?.name}
-                  {isAdmin && <Badge variant="red" style={{ fontSize: '0.58rem', padding: '2px 6px' }}>ADMIN</Badge>}
-                </Link>
-                <button
-                  onClick={logout}
-                  className="no-touch-expand"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', fontWeight: 600 }}
-                >
-                  <LogOut size={13} /> Logout
-                </button>
-              </div>
+              <UserMenu userName={user?.name} isAdmin={isAdmin} onLogout={logout} />
             )}
             {!isMobileNav && !isAuthenticated && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

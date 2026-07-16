@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { isSsrPath } from './navLinks';
 
 interface Props {
   links: ReadonlyArray<readonly [string, string]>;
@@ -20,17 +21,32 @@ const linkStyle = (active: boolean): React.CSSProperties => ({
 function NavLink({
   path, label, active, badge,
 }: { path: string; label: string; active: boolean; badge?: number }) {
+  const onEnter = (e: React.MouseEvent<HTMLElement>) => {
+    if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)';
+  };
+  const onLeave = (e: React.MouseEvent<HTMLElement>) => {
+    if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)';
+  };
+
+  const inner = (
+    <>
+      {label}
+      {active && <span style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, background: 'var(--acid)', borderRadius: 2 }} />}
+    </>
+  );
+
   return (
     <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'flex-start' }}>
-      <Link
-        to={path}
-        style={linkStyle(active)}
-        onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; }}
-        onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; }}
-      >
-        {label}
-        {active && <span style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, background: 'var(--acid)', borderRadius: 2 }} />}
-      </Link>
+      {/* SSR pages live outside the SPA — a <Link> would hit the catch-all route. */}
+      {isSsrPath(path) ? (
+        <a href={path} style={linkStyle(active)} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+          {inner}
+        </a>
+      ) : (
+        <Link to={path} style={linkStyle(active)} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+          {inner}
+        </Link>
+      )}
       {badge != null && badge > 0 && (
         <span style={{
           background: 'var(--danger)', color: '#fff',

@@ -5,6 +5,7 @@ import type { IJob } from '../types';
 import { Badge } from './ui';
 import { relativeDate } from '../utils/date';
 import { compactSalary, parseAllLocations, getPrimaryLocation } from '../utils/job';
+import { CATEGORY_LABELS, type Category } from '../utils/categorize';
 
 interface HomeJobCardProps {
   job: IJob;
@@ -24,13 +25,18 @@ function getInitialColors(company: string) {
 export default function HomeJobCard({ job }: HomeJobCardProps) {
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(false);
-  const destination = `/jobs?id=${job._id}`;
+  const destination = `/jobs/${job._id}`;
   const salary = compactSalary(job);
   const allLocations = parseAllLocations(job);
   const location = getPrimaryLocation(job, allLocations) || 'Germany';
   const initialColors = useMemo(() => getInitialColors(job.Company || 'J'), [job.Company]);
 
+  const categoryLabel = job.Category ? CATEGORY_LABELS[job.Category as Category] : null;
+
   const badges = [
+    categoryLabel
+      ? { label: categoryLabel, variant: 'blue' as const }
+      : null,
     job.Domain && (job.Domain === 'Technical' || job.Domain === 'Non-Technical')
       ? { label: job.Domain, variant: job.Domain === 'Technical' ? 'blue' as const : 'neutral' as const }
       : null,

@@ -162,11 +162,15 @@ export function detailedSalary(job: IJob): string | null {
   if (min == null && max == null) return null;
 
   const symbol = job.SalaryCurrency === 'EUR' ? '€' : job.SalaryCurrency === 'USD' ? '$' : (job.SalaryCurrency ? `${job.SalaryCurrency} ` : '');
-  const interval = job.SalaryInterval === 'per-year-salary'
-    ? '/ year'
-    : job.SalaryInterval === 'per-month-salary'
+
+  // Two vocabularies coexist: the ATS extractors write 'per-year-salary' etc,
+  // while Gemma-extracted salaries write 'yearly' | 'monthly' | 'hourly'.
+  // Both must map, or a monthly salary silently renders as "/ year".
+  const rawInterval = String(job.SalaryInterval || '').toLowerCase();
+  const interval =
+    rawInterval === 'per-month-salary' || rawInterval === 'monthly'
       ? '/ month'
-      : job.SalaryInterval === 'per-hour-wage'
+      : rawInterval === 'per-hour-wage' || rawInterval === 'hourly'
         ? '/ hour'
         : '/ year';
 

@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { LogOut } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { LogOut, Bookmark } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSavedJobs } from '../context/SavedJobsContext';
 import { Button, Container, Badge, Alert } from '../components/ui';
 import { BRAND } from '../theme/brand';
 import { apiGet } from '../utils/jobApi';
+import { CATEGORY_LABELS, type Category } from '../utils/categorize';
 import IdentityCard from '../components/profile/IdentityCard';
 import EmailPreferences from '../components/profile/EmailPreferences';
 import JobPreferencesForm from '../components/profile/JobPreferencesForm';
@@ -98,10 +101,12 @@ export default function Profile() {
       {/* Job matching preferences — salary, work style, visa, etc. */}
       <JobPreferencesForm />
 
+      {/* Saved jobs — bookmarked roles */}
+      <SavedJobsList />
+
       {/* Coming-soon sections */}
       <div style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
         {[
-          { title: 'Saved jobs', body: 'Bookmark roles to come back to them later.' },
           { title: 'Application history', body: 'Track which roles you have applied to.' },
         ].map(section => (
           <div
@@ -128,5 +133,90 @@ export default function Profile() {
         <LogOut size={14} /> Sign out
       </Button>
     </Container>
+  );
+}
+
+// ── Saved jobs ───────────────────────────────────────────────────────────────
+interface SavedEntry {
+  jobId: string;
+  savedAt: string | null;
+  isActive: boolean;
+  job: {
+    JobTitle: string;
+    Company: string;
+    Location: string;
+    Category?: string;
+  };
+}
+
+function SavedJobsList() {
+  const { savedVersion, toggleSave } = useSavedJobs();
+  const [entries, setEntries] = useState<SavedEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Refetch whenever a bookmark is toggled anywhere in the app.
+  useEffect(() => {
+    apiGet<{ jobs: SavedEntry[] }>('/api/jobs/saved')
+      .then(data => setEntries(data?.jobs || []))
+      .catch(() => setEntries([]))
+      .finally(() => setLoading(false));
+  }, [savedVersion]);
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Bookmark size={15} style={{ color: 'var(--text-muted)' }} />
+        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>Saved jobs</h3>
+        {!loading && entries.length > 0 && <Badge variant="neutral">{entries.length}</Badge>}
+      </div>
+
+      {loading ? (
+        <div className="skeleton" style={{ height: 70, borderRadius: 12 }} />
+      ) : entries.length === 0 ? (
+        <div style={{ background: 'var(--bg-surface)', border: '1px dashed var(--border)', borderRadius: 12, padding: 18 }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            No saved jobs yet. Tap the bookmark icon on any role to keep it here.
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {entries.map(entry => (
+            <div
+              key={entry.jobId}
+              style={{
+                display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10,
+                background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                borderRadius: 12, padding: '12px 14px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <Link
+                  to={`/jobs/${entry.jobId}`}
+                  style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', textDecoration: 'none', wordBreak: 'break-word' }}
+                >
+                  {entry.job.JobTitle}
+                </Link>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  {entry.job.Company} · {entry.job.Location}
+                </p>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                  {entry.job.Category && CATEGORY_LABELS[entry.job.Category as Category] && (
+                    <Badge variant="blue" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                      {CATEGORY_LABELS[entry.job.Category as Category]}
+                    </Badge>
+                  )}
+                  {!entry.isActive && (
+                    <Badge variant="neutral" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>No longer listed</Badge>
+                  )}
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => void toggleSave(entry.jobId)}>
+                Remove
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
 import { AppliedJobsProvider } from './context/AppliedJobsContext';
+import { SavedJobsProvider } from './context/SavedJobsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import Layout from './components/Layout';
@@ -29,6 +30,7 @@ const JobTestLogs     = lazy(() => import('./pages/JobTestLogs'));
 const AdminFeedback   = lazy(() => import('./pages/AdminFeedback'));
 const ResumeMatcher   = lazy(() => import('./pages/SmartMatch'));
 const TodayMatches    = lazy(() => import('./pages/TodayMatches'));
+const CareerGuideAdmin = lazy(() => import('./pages/CareerGuideAdmin'));
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const PROFILE_ENABLED  = import.meta.env.VITE_ENABLE_PROFILE === 'true';
@@ -51,6 +53,7 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <AppliedJobsProvider>
+          <SavedJobsProvider>
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<Layout />}>
@@ -79,6 +82,7 @@ export default function App() {
                 <Route element={<ProtectedRoute requireAdmin={true} />}>
                   <Route path="review"           element={<ReviewQueue />} />
                   <Route path="admin/companies"  element={<AdminCompanies />} />
+                  <Route path="admin/career-guide" element={<CareerGuideAdmin />} />
                   <Route path="dashboard"        element={<AdminDashboard />} />
                   <Route path="add"              element={<AddJob />} />
                   <Route path="rejected"         element={<RejectedJobs />} />
@@ -91,6 +95,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
+          </SavedJobsProvider>
           </AppliedJobsProvider>
         </BrowserRouter>
       </AuthProvider>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ExternalLink, MapPin, Share2, Check } from 'lucide-react';
 import type { IJob } from '../types';
 import FormattedDescription from './FormattedDescription';
+import SaveJobButton from './SaveJobButton';
 import { formatPostedDate } from '../utils/date';
 import { parseAllLocations, isMeaningful, normalizeWorkplace, detailedSalary, getDisplayLocation } from '../utils/job';
 import { Badge, Button } from './ui';
@@ -144,6 +145,7 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
             <Button size="sm" variant="ghost" onClick={handleShare}>
               {copied ? <><Check size={12} /> Copied!</> : <><Share2 size={12} /> Share</>}
             </Button>
+            <SaveJobButton jobId={job._id} size={16} />
             {job.GermanRequired === false && <Badge variant="acid">🇬🇧 English Only</Badge>}
           </div>
 
