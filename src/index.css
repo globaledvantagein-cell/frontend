@@ -496,10 +496,6 @@ body::before {
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.job-card:hover::before {
-  transform: scaleY(1);
-}
-
 .job-card:hover {
   border-color: var(--primary) !important;
   /* No positional shift on hover — border + shadow convey the state. */
@@ -514,7 +510,6 @@ body::before {
 
 @media (hover: hover) {
   .why-card:hover {
-    transform: translateY(-1px);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.06);
   }
 }
@@ -600,29 +595,21 @@ body::before {
    MARKER HIGHLIGHT hover effect
    A translucent "marker stroke" behind hovered elements
    ═══════════════════════════════════════════════════ */
-.marker-hover {
-  position: relative;
-  z-index: 0;
-}
+/* marker-hover REMOVED — its ::before drew a translucent shape inset -2px -4px
+   BEYOND the element, so on hover a box grew behind buttons (the "double
+   border / expanding" look). Buttons now change background-color only. */
 
-.marker-hover::before {
-  content: '';
-  position: absolute;
-  inset: -2px -4px;
-  background: var(--marker-color, var(--primary-soft));
-  border-radius: 6px;
-  opacity: 0;
-  z-index: -1;
-  /* Opacity-only fade — no scaleX grow. A marker that swept from 92%→100%
-     width read as the button "growing" on hover. Now it just fades in. */
-  transform: scaleX(1) rotate(-0.3deg);
-  transform-origin: left center;
-  transition: opacity 0.25s ease;
-  mix-blend-mode: var(--marker-blend, multiply);
-}
-
-.marker-hover:hover::before {
-  opacity: var(--marker-opacity, 0.55);
+/* The only hover a button gets: a subtle background-color change. Gated to
+   pointer devices, and !important because Button.tsx sets its base background
+   inline (inline styles otherwise beat a stylesheet :hover rule). */
+@media (hover: hover) and (pointer: fine) {
+  .btn-ghost:hover,
+  .btn-outline:hover {
+    background-color: var(--bg-surface-2) !important;
+  }
+  .btn-primary:hover {
+    background-color: var(--primary-hover) !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════════
@@ -795,10 +782,6 @@ body::before {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
-  }
-
-  .marker-hover::before {
-    transition: none !important;
   }
 
   .pencil-chart .recharts-line-curve {
@@ -1036,10 +1019,6 @@ body::before {
   }
 
   .job-card::before {
-    display: none;
-  }
-
-  .marker-hover::before {
     display: none;
   }
 }

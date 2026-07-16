@@ -93,18 +93,16 @@ const CompanyCard = memo(function CompanyCard({
         borderRadius: 10,
         padding: '14px 16px',
         cursor: 'pointer',
-        transition: 'box-shadow 0.2s, border-color 0.2s, transform 0.2s',
+        transition: 'box-shadow 0.2s, border-color 0.2s',
         outline: 'none',
       }}
       onMouseEnter={e => {
         e.currentTarget.style.borderColor = 'var(--primary)';
         e.currentTarget.style.boxShadow = '0 6px 20px 0 rgba(0,0,0,0.06)';
-        e.currentTarget.style.transform = 'translateY(-1px)';
       }}
       onMouseLeave={e => {
         e.currentTarget.style.borderColor = 'var(--border)';
         e.currentTarget.style.boxShadow = 'none';
-        e.currentTarget.style.transform = 'none';
       }}
       title={isScraped ? 'Browse jobs at this company' : 'Visit careers page'}
     >

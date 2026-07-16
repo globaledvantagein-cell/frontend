@@ -155,7 +155,10 @@ export default function PublicJobDetail({ job, onApplyTracked, onAuthRequired }:
         </div>
       </div>
 
-      <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-surface)', padding: '10px 14px' }}>
+      {/* The description flows directly — no nested bordered box. Inside the
+          split-view panel (already a bordered surface) a second card just
+          double-inset the text; now the JD fills the panel width. */}
+      <div style={{ padding: '6px 2px' }}>
         {job.DescriptionHtml ? (
           <div className="job-description-html" dangerouslySetInnerHTML={{ __html: job.DescriptionHtml }} />
         ) : (

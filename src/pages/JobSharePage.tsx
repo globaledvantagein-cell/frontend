@@ -168,7 +168,7 @@ export default function JobSharePage() {
 
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: '80vh' }}>
-      <Container style={{ maxWidth: 800, padding: '24px 24px 48px' }}>
+      <Container style={{ maxWidth: 1000, padding: '24px 24px 48px' }}>
         {/* Back link — uses browser back to preserve scroll position */}
         <button
           onClick={handleBack}

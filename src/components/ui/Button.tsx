@@ -33,8 +33,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant; size?: Size; loading?: boolean; as?: 'button' | 'a'; href?: string; target?: string; rel?: string; children: ReactNode;
 }
 export function Button({ variant = 'primary', size = 'md', loading, children, style, as: Tag = 'button', href, className = '', ...rest }: ButtonProps & { className?: string }) {
-  const sketchClass = (variant === 'ghost' || variant === 'outline') ? 'sketch-ink marker-hover' : '';
+  // No marker-hover — buttons change background-color only (see index.css .btn-*:hover).
+  // sketch-ink stays for the static sketch border texture (not a hover effect).
+  const sketchClass = (variant === 'ghost' || variant === 'outline') ? 'sketch-ink' : '';
+  const btnClass = `btn btn-${variant}`;
   const merged: CSSProperties = { ...BTN_BASE, ...BTN_SIZE[size], ...BTN_VARIANT[variant], ...(loading ? { opacity: 0.65, cursor: 'not-allowed' } : {}), ...style };
-  if (Tag === 'a') return <a href={href} className={`${sketchClass} ${className}`} style={merged} {...(rest as any)}>{loading ? <Spinner size={14} /> : children}</a>;
-  return <button disabled={loading || rest.disabled} className={`${sketchClass} ${className}`} style={merged} {...rest}>{loading ? <Spinner size={14} /> : children}</button>;
+  if (Tag === 'a') return <a href={href} className={`${sketchClass} ${btnClass} ${className}`} style={merged} {...(rest as any)}>{loading ? <Spinner size={14} /> : children}</a>;
+  return <button disabled={loading || rest.disabled} className={`${sketchClass} ${btnClass} ${className}`} style={merged} {...rest}>{loading ? <Spinner size={14} /> : children}</button>;
 }

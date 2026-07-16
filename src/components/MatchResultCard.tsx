@@ -120,14 +120,17 @@ export default function MatchResultCard({ result }: { result: MatchResult }) {
                 href={job.ApplicationURL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="sketch-ink marker-hover"
+                className="sketch-ink"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 7,
                   fontSize: '0.8rem', fontWeight: 600, fontFamily: 'inherit',
                   padding: '8px 16px', borderRadius: 10, textDecoration: 'none',
                   color: 'var(--ink)', background: 'transparent',
                   border: '1.25px solid var(--ink-border-strong, var(--border-strong))',
+                  transition: 'background-color 0.16s ease',
                 }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-surface-2)'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 View Job <ExternalLink size={14} />
               </a>

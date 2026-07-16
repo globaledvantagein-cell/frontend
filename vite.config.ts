@@ -21,6 +21,13 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // SSR routes served by the Express backend (not React) — forward them in
+      // dev so /city/*, /category/*, /career-guide*, and /sitemap.xml render
+      // real HTML instead of falling through to the SPA index.html.
+      '/city': { target: 'http://localhost:3000', changeOrigin: true, secure: false },
+      '/category': { target: 'http://localhost:3000', changeOrigin: true, secure: false },
+      '/career-guide': { target: 'http://localhost:3000', changeOrigin: true, secure: false },
+      '/sitemap.xml': { target: 'http://localhost:3000', changeOrigin: true, secure: false },
     },
   },
 })

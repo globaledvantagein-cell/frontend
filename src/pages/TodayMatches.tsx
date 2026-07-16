@@ -11,15 +11,23 @@
  *  - No matching jobs → empty state
  *  - < 5 matches → show however many exist
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, Upload, Wrench, Building2, MapPin, Check, RefreshCw } from 'lucide-react';
-import { Container, PageHeader, Card, Badge, Button, EmptyState } from '../components/ui';
+import { Sparkles, Upload, Wrench, RefreshCw } from 'lucide-react';
+import { Container, PageHeader, Button, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { fetchSkillMatches, type SkillMatchJob } from '../utils/skillMatchApi';
 import { BRAND } from '../theme/brand';
 
 type Status = 'loading' | 'done' | 'no_profile' | 'no_skills' | 'no_matches' | 'error';
+
+// auto-fill + minmax(340) reliably yields 3 columns at the 1400 max, 2 on
+// tablet, 1 on mobile — a recommendation feed, not a data table.
+const MATCH_GRID: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+  gap: 14,
+};
 
 export default function TodayMatches() {
   const { token, isLoading: authLoading } = useAuth();
@@ -63,7 +71,7 @@ export default function TodayMatches() {
 
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: '80vh' }}>
-      <Container style={{ maxWidth: 800, padding: '24px 24px 48px' }}>
+      <Container style={{ maxWidth: 1400, padding: '24px 24px 48px' }}>
         <PageHeader
           label="ENGLISH JOBS IN GERMANY"
           title="Today's Matches"
@@ -71,9 +79,9 @@ export default function TodayMatches() {
         />
 
         {status === 'loading' && (
-          <div style={{ display: 'grid', gap: 12 }}>
-            {[1, 2, 3].map(i => (
-              <div key={i} className="skeleton" style={{ height: 120, borderRadius: 10 }} />
+          <div style={MATCH_GRID}>
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="skeleton" style={{ height: 170, borderRadius: 12 }} />
             ))}
           </div>
         )}
@@ -126,7 +134,7 @@ export default function TodayMatches() {
               </Button>
             </div>
 
-            <div style={{ display: 'grid', gap: 12 }}>
+            <div className="stagger" style={MATCH_GRID}>
               {matches.map(job => (
                 <SkillMatchCard key={job._id} job={job} onClick={() => navigate(`/jobs/${job._id}`)} />
               ))}
@@ -139,73 +147,102 @@ export default function TodayMatches() {
 }
 
 // ── Match Card ─────────────────────────────────────────────────────────────────
+// Compact, self-contained feed card. Score is a small colour-coded badge in the
+// corner (not a giant number); matched skills are green chips at the bottom.
+const MAX_CHIPS = 6;
+
+function scoreBadgeColors(pct: number): { bg: string; fg: string } {
+  if (pct > 50) return { bg: 'var(--success-soft)', fg: 'var(--success)' }; // green
+  if (pct >= 30) return { bg: 'var(--warning-soft)', fg: 'var(--warning)' }; // yellow
+  return { bg: 'var(--bg-surface-2)', fg: 'var(--text-muted)' };             // gray
+}
+
 function SkillMatchCard({ job, onClick }: { job: SkillMatchJob; onClick: () => void }) {
   const pct = Math.round(job.score * 100);
-  const accent = pct >= 60 ? 'var(--success)' : pct >= 35 ? 'var(--info)' : 'var(--warning)';
+  const badge = scoreBadgeColors(pct);
+  const locationLine = [job.Company, job.Location].filter(Boolean).join(' · ');
+  const chips = job.matchedSkills.slice(0, MAX_CHIPS);
+  const extra = job.matchedSkills.length - chips.length;
+
+  const open = () => onClick();
 
   return (
-    <Card
-      style={{ borderLeft: `3px solid ${accent}`, cursor: 'pointer', transition: 'border-color 0.18s' }}
-      onClick={onClick}
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`${job.JobTitle} at ${job.Company} — ${pct}% match`}
+      onClick={open}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }}
+      // Press feedback (scale 0.97) comes from the global [role=button]:active
+      // rule. Hover changes border + shadow only — no jump.
+      style={{
+        position: 'relative',
+        display: 'flex', flexDirection: 'column', gap: 8,
+        height: '100%',
+        background: 'var(--bg-surface)', border: '1px solid var(--border)',
+        borderRadius: 12, padding: 14,
+        cursor: 'pointer', textAlign: 'left',
+        transition: 'border-color 0.16s ease, box-shadow 0.16s ease',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
     >
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        {/* Score */}
-        <div style={{ textAlign: 'center', flexShrink: 0, minWidth: 44 }}>
-          <div style={{ fontSize: '1.6rem', fontWeight: 700, color: accent, lineHeight: 1 }}>
-            {pct}
-          </div>
-          <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-            %
-          </div>
+      {/* Score badge — top-right corner */}
+      <span style={{
+        position: 'absolute', top: 12, right: 12,
+        fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.01em',
+        padding: '2px 8px', borderRadius: 999,
+        background: badge.bg, color: badge.fg,
+      }}>
+        {pct}%
+      </span>
+
+      {/* Title */}
+      <h3 style={{
+        margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)',
+        lineHeight: 1.3, paddingRight: 48,
+        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+      }}>
+        {job.JobTitle}
+      </h3>
+
+      {/* Company · Location — one muted line */}
+      {locationLine && (
+        <p style={{
+          margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {locationLine}
+        </p>
+      )}
+
+      {/* Spacer pushes the skills/footer to the bottom so cards align */}
+      <div style={{ flex: 1 }} />
+
+      {/* Matched skills — green chips */}
+      {chips.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {chips.map(skill => (
+            <span key={skill} style={{
+              fontSize: '0.72rem', fontWeight: 600, padding: '2px 7px', borderRadius: 6,
+              background: 'var(--success-soft)', color: 'var(--success)',
+            }}>
+              {skill}
+            </span>
+          ))}
+          {extra > 0 && (
+            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '2px 7px', color: 'var(--text-muted)' }}>
+              +{extra}
+            </span>
+          )}
         </div>
+      )}
 
-        {/* Body */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-            {job.JobTitle}
-          </h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            {job.Company && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <Building2 size={13} /> {job.Company}
-              </span>
-            )}
-            {job.Location && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <MapPin size={13} /> {job.Location}
-              </span>
-            )}
-          </div>
-
-          {/* Badges */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-            {job.Category && <Badge variant="neutral">{job.Category.replace(/_/g, ' ')}</Badge>}
-            {job.ExperienceLevel && <Badge variant="neutral">{job.ExperienceLevel}</Badge>}
-            {job.WorkplaceType && <Badge variant="neutral">{job.WorkplaceType}</Badge>}
-          </div>
-
-          {/* Matched skills */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 10 }}>
-            <Check size={14} strokeWidth={3} style={{ color: 'var(--success)', flexShrink: 0, marginTop: 2 }} />
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {job.matchedSkills.map(skill => (
-                <span key={skill} style={{
-                  fontSize: '0.74rem', fontWeight: 600, padding: '2px 7px', borderRadius: 5,
-                  background: 'var(--acid-soft)', color: 'var(--acid)',
-                  border: '1px solid var(--acid)',
-                }}>
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <p style={{ marginTop: 8, fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-            {job.matchedCount} of {job.totalSkillCount} skills matched
-          </p>
-        </div>
-      </div>
-    </Card>
+      {/* X of Y matched — subtle footer */}
+      <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+        {job.matchedCount} of {job.totalSkillCount} skills matched
+      </p>
+    </div>
   );
 }
 
